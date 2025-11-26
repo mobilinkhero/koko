@@ -530,6 +530,14 @@ class WhatsAppWebhookController extends Controller
                             $message_bots = MessageBot::getMessageBotsbyRelType($contact_data->type ?? '', $query_trigger_msg, $this->tenant_id, 4);
                         }
 
+                        whatsapp_log('Found bots matching trigger', 'info', [
+                            'trigger_msg' => $trigger_msg,
+                            'template_bots_count' => count($template_bots),
+                            'message_bots_count' => count($message_bots),
+                            'template_bot_ids' => array_column($template_bots, 'id'),
+                            'message_bot_ids' => array_column($message_bots, 'id'),
+                        ], null, $this->tenant_id);
+
                         $add_messages = function ($item) {
                             $item['header_message'] = $item['header_data_text'];
                             $item['body_message'] = $item['body_data'];
@@ -556,6 +564,14 @@ class WhatsAppWebhookController extends Controller
 
                             // Send template on exact match, contains, or first time
                             if (($template['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $template['trigger']))))) || ($template['reply_type'] == 2 && !empty(array_filter(explode(',', $template['trigger']), fn($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($template['reply_type'] == 3 && $this->is_first_time) || $template['reply_type'] == 4) {
+                                
+                                whatsapp_log('Sending template bot response', 'info', [
+                                    'template_id' => $template['id'] ?? 'unknown',
+                                    'template_name' => $template['template_name'] ?? 'unknown',
+                                    'trigger' => $template['trigger'] ?? '',
+                                    'contact_number' => $contact_number,
+                                ], null, $this->tenant_id);
+                                
                                 // Use the tenant ID when sending the template
                                 $response = $this->setWaTenantId($this->tenant_id)->sendTemplate($contact_number, $template, 'template_bot', $metadata['phone_number_id']);
 
@@ -563,6 +579,11 @@ class WhatsAppWebhookController extends Controller
                                 $chatMessage = $this->storeBotMessages($template, $chatId, $contact_data, 'template_bot', $response);
                                 
                                 $bot_responded = true; // Mark that we sent a response
+                                
+                                whatsapp_log('Template bot response sent - stopping further bot processing', 'info', [
+                                    'template_id' => $template['id'] ?? 'unknown',
+                                ], null, $this->tenant_id);
+                                
                                 break; // Stop processing more template bots
                             }
                         }
@@ -581,6 +602,13 @@ class WhatsAppWebhookController extends Controller
                                 }
                                 if (($message['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $message['trigger']))))) || ($message['reply_type'] == 2 && !empty(array_filter(explode(',', $message['trigger']), fn($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($message['reply_type'] == 3 && $this->is_first_time) || $message['reply_type'] == 4) {
 
+                                    whatsapp_log('Sending message bot response', 'info', [
+                                        'message_id' => $message['id'] ?? 'unknown',
+                                        'trigger' => $message['trigger'] ?? '',
+                                        'message_preview' => substr($message['message'] ?? '', 0, 50),
+                                        'contact_number' => $contact_number,
+                                    ], null, $this->tenant_id);
+
                                     do_action('before_process_messagebot_sending_message', ['message' => $message, 'trigger_msg' => $trigger_msg, 'contact_number' => $contact_number, 'tenant_id' => $this->tenant_id, 'tenant_subdomain' => $this->tenant_subdoamin]);
 
                                     // Use the tenant ID when sending the message
@@ -590,6 +618,11 @@ class WhatsAppWebhookController extends Controller
                                     $chatMessage = $this->storeBotMessages($message, $chatId, $contact_data, '', $response);
                                     
                                     $bot_responded = true; // Mark that we sent a response
+                                    
+                                    whatsapp_log('Message bot response sent - stopping further bot processing', 'info', [
+                                        'message_id' => $message['id'] ?? 'unknown',
+                                    ], null, $this->tenant_id);
+                                    
                                     break; // Stop processing more message bots
                                 }
                             }
