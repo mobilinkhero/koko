@@ -64,18 +64,7 @@
             </div>
         </div>
         @endif
-        <form wire:submit.prevent="save" class="mt-4" x-data="{ 
-            flowName: @entangle('botFlow.name').live
-        }" x-init="
-            console.log('🟢 Bot Flow Form Initialized');
-            $watch('flowName', value => {
-                console.log('🟡 Client-side name changed:', { 
-                    value: value, 
-                    length: value?.length || 0,
-                    isEmpty: !value || value.trim() === ''
-                });
-            });
-        ">
+        <form wire:submit.prevent="save" class="mt-4">
             <div class="px-6 space-y-3">
                 <div>
                     <div class="flex item-centar justify-start gap-1">
@@ -84,8 +73,7 @@
                             {{ t('name') }}
                         </x-label>
                     </div>
-                    <x-input wire:model.live.debounce.300ms="botFlow.name" type="text" id="name" class="w-full" 
-                        @input="console.log('⌨️ User typing:', $event.target.value)" />
+                    <x-input wire:model.live.debounce.300ms="botFlow.name" type="text" id="name" class="w-full" />
                     <x-input-error for="botFlow.name" class="mt-2" />
                 </div>
 
