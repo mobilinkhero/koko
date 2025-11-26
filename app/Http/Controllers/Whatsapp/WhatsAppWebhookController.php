@@ -185,28 +185,43 @@ class WhatsAppWebhookController extends Controller
 
             // CRITICAL FIX: Insert placeholder IMMEDIATELY to block parallel webhooks
             // This prevents race condition during long-running flows (AI calls, etc.)
-            try {
-                // Get sender info
-                $from = $payload['entry'][0]['changes'][0]['value']['messages'][0]['from'] ?? '';
-                
-                // Insert minimal placeholder record
-                \App\Models\Tenant\ChatMessage::fromTenant($this->tenant_subdoamin)->insert([
+            $from = $payload['entry'][0]['changes'][0]['value']['messages'][0]['from'] ?? '';
+            
+            whatsapp_log('DUPLICATE_DEBUG: Checking for existing message before placeholder insert', 'info', [
+                'message_id' => $message_id,
+                'from' => $from,
+                'tenant_id' => $this->tenant_id,
+            ]);
+            
+            // Use firstOrCreate to atomically check and insert
+            $placeholder = \App\Models\Tenant\ChatMessage::fromTenant($this->tenant_subdoamin)->firstOrCreate(
+                ['message_id' => $message_id, 'tenant_id' => $this->tenant_id],
+                [
                     'interaction_id' => 0, // Temporary - will be updated by processIncomingMessages
                     'sender_id' => $from,
-                    'message_id' => $message_id,
                     'message' => '...', // Placeholder - will be updated
                     'type' => 'text',
                     'status' => 'processing',
                     'time_sent' => now(),
-                    'tenant_id' => $this->tenant_id,
                     'created_at' => now(),
                     'updated_at' => now(),
+                ]
+            );
+            
+            // If wasRecentlyCreated is false, this message was already being processed
+            if (!$placeholder->wasRecentlyCreated) {
+                whatsapp_log('DUPLICATE_DEBUG: Message already exists - BLOCKING duplicate', 'warning', [
+                    'message_id' => $message_id,
+                    'existing_id' => $placeholder->id,
                 ]);
-            } catch (\Exception $e) {
-                // If insert fails (duplicate key), another webhook beat us - release and exit
                 \Illuminate\Support\Facades\DB::select("SELECT RELEASE_LOCK(?)", [$lockKey]);
                 return;
             }
+            
+            whatsapp_log('DUPLICATE_DEBUG: Placeholder created successfully - PROCEEDING', 'info', [
+                'message_id' => $message_id,
+                'placeholder_id' => $placeholder->id,
+            ]);
 
             try {
                 // Process payload directly
@@ -1915,13 +1930,22 @@ class WhatsAppWebhookController extends Controller
                             }
 
                             // This is a specific match (exact/contains/first-time) - execute immediately
-                            whatsapp_log('Found specific trigger match, executing flow', 'info', [
+                            whatsapp_log('DUPLICATE_DEBUG: Flow match found, executing', 'info', [
                                 'flow_id' => $flow->id,
+                                'flow_name' => $flow->name ?? 'Unknown',
                                 'trigger_node_id' => $node['id'],
                                 'match_type' => $matchResult['match_type'],
+                                'trigger_msg' => $triggerMsg,
                             ]);
 
-                            return $this->executeFlowFromStart($flow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
+                            $result = $this->executeFlowFromStart($flow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
+                            
+                            whatsapp_log('DUPLICATE_DEBUG: Flow execution completed, RETURNING', 'info', [
+                                'flow_id' => $flow->id,
+                                'flow_name' => $flow->name ?? 'Unknown',
+                            ]);
+                            
+                            return $result;
                         }
                     }
                 }
