@@ -59,7 +59,7 @@
                                             {{ t('connect_with_facebook') }}
                                         </button>
                                     </div>
-                                    <div id="fb-embedded-signup" class="w-full hidden"></div>
+                                    <div id="fb-embedded-signup" class="w-full" style="display: none;"></div>
                                 </div>
                             </div>
                         </div>
@@ -475,31 +475,48 @@
     // Store reference to embedded button for reuse (global scope)
     let embeddedSignupButton = null;
     
-    // Function to trigger embedded signup (global scope)
+    // Function to trigger embedded signup using Facebook's API
     function triggerEmbeddedSignup() {
+        if (typeof FB === 'undefined') {
+            console.error('Facebook SDK not loaded');
+            return false;
+        }
+        
         const container = document.getElementById('fb-embedded-signup');
         if (!container) {
             console.error('Container not found');
             return false;
         }
         
-        // Try multiple ways to find and trigger the button
+        // Make container visible temporarily so widget can render
+        const wasHidden = container.style.display === 'none';
+        if (wasHidden) {
+            container.style.display = 'block';
+            container.style.visibility = 'hidden';
+            container.style.position = 'absolute';
+            container.style.width = '1px';
+            container.style.height = '1px';
+        }
+        
+        // Try to find and click the button
         const selectors = [
             'button',
             '[role="button"]',
             '.fb-embedded-signup button',
             'iframe',
             'div[role="button"]',
-            'a[role="button"]'
+            'a[role="button"]',
+            'span[role="button"]'
         ];
         
         // First try cached button
         if (embeddedSignupButton) {
             try {
                 embeddedSignupButton.click();
+                console.log('Triggered embedded signup using cached button');
                 return true;
             } catch (e) {
-                console.log('Cached button click failed, trying to find again');
+                console.log('Cached button click failed:', e);
                 embeddedSignupButton = null;
             }
         }
@@ -519,24 +536,25 @@
             }
         }
         
-        // Try to find in iframe content
+        // Try to trigger via iframe
         const iframe = container.querySelector('iframe');
-        if (iframe && iframe.contentDocument) {
+        if (iframe) {
             try {
-                const iframeButton = iframe.contentDocument.querySelector('button, [role="button"]');
-                if (iframeButton) {
-                    iframeButton.click();
-                    return true;
+                // Try to access iframe content (may fail due to CORS)
+                if (iframe.contentDocument) {
+                    const iframeButton = iframe.contentDocument.querySelector('button, [role="button"]');
+                    if (iframeButton) {
+                        iframeButton.click();
+                        return true;
+                    }
                 }
+                // If we can't access iframe content, try clicking the iframe itself
+                iframe.click();
+                console.log('Clicked iframe directly');
+                return true;
             } catch (e) {
-                console.log('Cannot access iframe content (cross-origin)');
+                console.log('Iframe click failed:', e);
             }
-        }
-        
-        // Last resort: try to trigger via Facebook API
-        if (typeof FB !== 'undefined' && FB.ui) {
-            console.log('Trying Facebook UI method');
-            // This might not work for embedded signup, but worth trying
         }
         
         console.error('Could not find embedded signup button');
@@ -594,35 +612,21 @@
                     return;
                 }
                 
-                // Fallback: Open Facebook OAuth in popup window
-                console.log('Using fallback: Opening Facebook OAuth in popup');
-                const redirectUri = encodeURIComponent('{{ url(tenant_route("tenant.connect", [], false)) }}');
-                const appId = '{{ $admin_fb_app_id }}';
-                const configId = '{{ $admin_fb_config_id }}';
-                
-                const oauthUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
-                    `client_id=${appId}` +
-                    `&redirect_uri=${redirectUri}` +
-                    `&response_type=code` +
-                    `&scope=whatsapp_business_management,business_management` +
-                    `&config_id=${configId}` +
-                    `&state={{ csrf_token() }}`;
-                
-                // Open in popup window
-                const popup = window.open(
-                    oauthUrl,
-                    'FacebookLogin',
-                    'width=600,height=700,scrollbars=yes,resizable=yes'
-                );
-                
-                // Listen for popup to close (user completed or cancelled)
-                const checkClosed = setInterval(function() {
-                    if (popup.closed) {
-                        clearInterval(checkClosed);
-                        // Reload page to check for code parameter
-                        window.location.reload();
-                    }
-                }, 500);
+                // Last attempt: Force re-render and try again
+                console.log('Forcing widget re-render...');
+                const container = document.getElementById('fb-embedded-signup');
+                if (container) {
+                    container.innerHTML = '';
+                    renderEmbeddedSignup();
+                    
+                    // Wait a bit longer for widget to render
+                    setTimeout(function() {
+                        if (!triggerEmbeddedSignup()) {
+                            console.error('Embedded signup widget failed to render. Please check your Facebook Config ID in admin settings.');
+                            alert('Facebook embedded signup is not available. Please ensure the Facebook Config ID is correctly configured in the admin panel.');
+                        }
+                    }, 2000);
+                }
             }, 500);
         }
     });
@@ -641,30 +645,37 @@
             return;
         }
         
+        // Make container visible temporarily for rendering (but keep it visually hidden)
+        container.style.display = 'block';
+        container.style.visibility = 'hidden';
+        container.style.position = 'absolute';
+        container.style.width = '1px';
+        container.style.height = '1px';
+        container.style.opacity = '0';
+        
         // Only render if container is empty
-        if (container.innerHTML.trim() !== '') {
+        if (container.innerHTML.trim() === '') {
+            console.log('Rendering Facebook embedded signup widget with config_id: {{ $admin_fb_config_id }}');
+            
+            // Use Facebook's Embedded Signup widget - it will open in popup automatically
+            // The widget uses the config_id from admin panel
+            container.innerHTML = `
+                <div class="fb-embedded-signup" 
+                     data-config-id="{{ $admin_fb_config_id }}"
+                     data-redirect-uri="{{ url(tenant_route('tenant.connect', [], false)) }}"
+                     data-width="100%">
+                </div>
+            `;
+            
+            try {
+                FB.XFBML.parse(container);
+                console.log('FB.XFBML.parse completed');
+            } catch (e) {
+                console.error('Error parsing FB XFBML:', e);
+            }
+        } else {
             // Widget already rendered, try to find the button
             findEmbeddedButton();
-            return;
-        }
-        
-        console.log('Rendering Facebook embedded signup widget with config_id: {{ $admin_fb_config_id }}');
-        
-        // Use Facebook's Embedded Signup widget - it will open in popup automatically
-        // The widget uses the config_id from admin panel
-        container.innerHTML = `
-            <div class="fb-embedded-signup" 
-                 data-config-id="{{ $admin_fb_config_id }}"
-                 data-redirect-uri="{{ url(tenant_route('tenant.connect', [], false)) }}"
-                 data-width="100%">
-            </div>
-        `;
-        
-        try {
-            FB.XFBML.parse(container);
-            console.log('FB.XFBML.parse completed');
-        } catch (e) {
-            console.error('Error parsing FB XFBML:', e);
         }
         
         // Use MutationObserver to watch for widget rendering
