@@ -58,7 +58,7 @@
                                             {{ t('connect_with_facebook') }}
                                         </button>
                                     </div>
-                                    <div id="fb-embedded-signup" class="w-full hidden"></div>
+                                    <div id="fb-embedded-signup" class="w-full"></div>
                                 </div>
                             </div>
                         </div>
@@ -479,25 +479,44 @@
             version: 'v18.0'
         });
 
-        // Handle Facebook Login button click - Use OAuth redirect with code flow
-        document.getElementById('fb-login-button')?.addEventListener('click', function() {
-            // Redirect to Facebook OAuth with code response type (not token)
-            // Get absolute URL for redirect_uri
-            const redirectUri = encodeURIComponent('{{ url(tenant_route("tenant.connect", [], false)) }}');
-            const appId = '{{ $admin_fb_app_id }}';
-            const configId = '{{ $admin_fb_config_id }}';
+        // Handle Facebook Login button click - Open in popup
+        document.getElementById('fb-login-button')?.addEventListener('click', function(e) {
+            e.preventDefault();
             
-            // Build OAuth URL with code response type
-            const oauthUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
-                `client_id=${appId}` +
-                `&redirect_uri=${redirectUri}` +
-                `&response_type=code` +
-                `&scope=whatsapp_business_management,business_management` +
-                `&config_id=${configId}` +
-                `&state={{ csrf_token() }}`;
-            
-            // Redirect to Facebook OAuth
-            window.location.href = oauthUrl;
+            // Use FB.login() which opens in a popup by default
+            FB.login(function(response) {
+                if (response.authResponse) {
+                    // User granted permissions
+                    const accessToken = response.authResponse.accessToken;
+                    
+                    // Get business account ID
+                    FB.api('/me/businesses', { 
+                        access_token: accessToken,
+                        fields: 'id,name'
+                    }, function(businessResponse) {
+                        if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
+                            const businessAccountId = businessResponse.data[0].id;
+                            // Call Livewire method to save
+                            @this.call('handleEmbeddedSignupDirect', accessToken, businessAccountId);
+                        } else {
+                            // Try alternative method to get business account
+                            FB.api('/me', { 
+                                access_token: accessToken,
+                                fields: 'id'
+                            }, function(userResponse) {
+                                @this.call('handleEmbeddedSignupDirect', accessToken, userResponse.id);
+                            });
+                        }
+                    });
+                } else {
+                    console.log('User cancelled login or did not fully authorize.');
+                }
+            }, {
+                scope: 'whatsapp_business_management,business_management',
+                config_id: '{{ $admin_fb_config_id }}',
+                return_scopes: true,
+                auth_type: 'rerequest'
+            });
         });
 
         // Listen for embedded signup completion (fallback)
@@ -522,23 +541,51 @@
         });
     };
 
-    // Render embedded signup widget
+    // Render embedded signup widget - This will create a button that opens in a popup
     document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(function() {
+        function renderEmbeddedSignup() {
             if (typeof FB !== 'undefined' && FB.XFBML) {
                 const container = document.getElementById('fb-embedded-signup');
                 if (container) {
+                    // Use Facebook's Embedded Signup widget with popup mode
                     container.innerHTML = `
                         <div class="fb-embedded-signup" 
                              data-config-id="{{ $admin_fb_config_id }}"
-                             data-redirect-uri="{{ tenant_route('tenant.connect') }}"
+                             data-redirect-uri="{{ url(tenant_route('tenant.connect', [], false)) }}"
                              data-width="100%">
                         </div>
                     `;
                     FB.XFBML.parse(container);
+                    
+                    // After widget renders, hide our custom button and show Facebook's button
+                    setTimeout(function() {
+                        const fbButton = container.querySelector('button, [role="button"]');
+                        if (fbButton) {
+                            // Style Facebook's button to match our design
+                            fbButton.style.display = 'none';
+                            // Make our custom button trigger Facebook's button
+                            const customButton = document.getElementById('fb-login-button');
+                            if (customButton) {
+                                customButton.onclick = function(e) {
+                                    e.preventDefault();
+                                    fbButton.click();
+                                };
+                            }
+                        }
+                    }, 500);
                 }
+            } else {
+                // Retry if FB not loaded yet
+                setTimeout(renderEmbeddedSignup, 500);
             }
-        }, 1000);
+        }
+        
+        // Wait for FB SDK to be ready
+        if (typeof FB !== 'undefined') {
+            renderEmbeddedSignup();
+        } else {
+            setTimeout(renderEmbeddedSignup, 1000);
+        }
     });
 </script>
 @endpush
