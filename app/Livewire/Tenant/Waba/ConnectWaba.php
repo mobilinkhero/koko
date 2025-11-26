@@ -53,6 +53,14 @@ class ConnectWaba extends Component
             return redirect(tenant_route('tenant.dashboard'));
         }
 
+        // Check if this is an OAuth callback from Facebook
+        $code = request()->query('code');
+        if ($code) {
+            // Handle OAuth callback
+            $this->handleEmbeddedSignup($code);
+            return;
+        }
+
         $whatsapp_settings = tenant_settings_by_group('whatsapp');
         $this->wm_fb_app_id = $whatsapp_settings['wm_fb_app_id'] ?? '';
         $this->wm_fb_app_secret = $whatsapp_settings['wm_fb_app_secret'] ?? '';
@@ -250,10 +258,12 @@ class ConnectWaba extends Component
             }
 
             // Exchange authorization code for access token
+            // Get absolute URL for redirect_uri
+            $redirectUri = url(tenant_route('tenant.connect', [], false));
             $tokenResponse = \Illuminate\Support\Facades\Http::asForm()->post('https://graph.facebook.com/v18.0/oauth/access_token', [
                 'client_id' => $this->admin_fb_app_id,
                 'client_secret' => $this->admin_fb_app_secret,
-                'redirect_uri' => tenant_route('tenant.connect'),
+                'redirect_uri' => $redirectUri,
                 'code' => $authCode,
             ]);
 

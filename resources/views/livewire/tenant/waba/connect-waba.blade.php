@@ -479,34 +479,25 @@
             version: 'v18.0'
         });
 
-        // Handle Facebook Login button click
+        // Handle Facebook Login button click - Use OAuth redirect with code flow
         document.getElementById('fb-login-button')?.addEventListener('click', function() {
-            FB.login(function(response) {
-                if (response.authResponse) {
-                    // User logged in and granted permissions
-                    const accessToken = response.authResponse.accessToken;
-                    
-                    // Get user's business accounts
-                    FB.api('/me/businesses', { access_token: accessToken }, function(businessResponse) {
-                        if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
-                            const businessAccountId = businessResponse.data[0].id;
-                            // Call Livewire method to handle the signup
-                            @this.call('handleEmbeddedSignupDirect', accessToken, businessAccountId);
-                        } else {
-                            // Try to get business account ID from the access token
-                            FB.api('/me', { access_token: accessToken, fields: 'id,name' }, function(userResponse) {
-                                // Use the user ID as business account ID (fallback)
-                                @this.call('handleEmbeddedSignupDirect', accessToken, userResponse.id);
-                            });
-                        }
-                    });
-                } else {
-                    console.error('User cancelled login or did not fully authorize.');
-                }
-            }, {
-                scope: 'whatsapp_business_management,business_management',
-                config_id: '{{ $admin_fb_config_id }}'
-            });
+            // Redirect to Facebook OAuth with code response type (not token)
+            // Get absolute URL for redirect_uri
+            const redirectUri = encodeURIComponent('{{ url(tenant_route("tenant.connect", [], false)) }}');
+            const appId = '{{ $admin_fb_app_id }}';
+            const configId = '{{ $admin_fb_config_id }}';
+            
+            // Build OAuth URL with code response type
+            const oauthUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
+                `client_id=${appId}` +
+                `&redirect_uri=${redirectUri}` +
+                `&response_type=code` +
+                `&scope=whatsapp_business_management,business_management` +
+                `&config_id=${configId}` +
+                `&state={{ csrf_token() }}`;
+            
+            // Redirect to Facebook OAuth
+            window.location.href = oauthUrl;
         });
 
         // Listen for embedded signup completion (fallback)
