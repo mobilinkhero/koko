@@ -2272,16 +2272,11 @@ trait WhatsApp
                 return $this->sendMessage($to, $messageData, $phoneNumberId);
             }
             
-            // ✅ SECURITY: Get the SPECIFIC assistant by ID with tenant verification
-            $tenantId = $this->getWaTenantId();
-            
-            // Explicitly verify tenant ownership to prevent cross-tenant access
-            $assistant = \App\Models\PersonalAssistant::where('id', $selectedAssistantId)
-                ->where('tenant_id', $tenantId)
-                ->first();
+            // ✅ CORRECT: Get the SPECIFIC assistant by ID
+            $assistant = \App\Models\PersonalAssistant::find($selectedAssistantId);
             
             if (!$assistant) {
-                $this->logToAiFile($logFile, "ERROR: Assistant not found or doesn't belong to tenant (ID: $selectedAssistantId, Tenant: $tenantId)");
+                $this->logToAiFile($logFile, "ERROR: Assistant not found (ID: $selectedAssistantId)");
                 
                 $messageData = [
                     'rel_type' => $contactData->type ?? 'guest',

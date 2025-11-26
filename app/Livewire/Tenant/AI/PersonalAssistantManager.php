@@ -161,9 +161,7 @@ class PersonalAssistantManager extends Component
 
             // Check if we're editing an existing assistant
             if ($this->editingAssistantId) {
-                // ✅ SECURITY: Use tenant-verified find to prevent cross-tenant access
-                $tenant = $this->getCurrentTenant();
-                $assistant = $tenant ? PersonalAssistant::findForTenant($this->editingAssistantId, $tenant->id) : null;
+                $assistant = PersonalAssistant::find($this->editingAssistantId);
                 if ($assistant) {
                     $assistant->update($data);
                 } else {
@@ -280,11 +278,7 @@ class PersonalAssistantManager extends Component
 
     public function toggleAssistant($assistantId = null)
     {
-        // ✅ SECURITY: Use tenant-verified find to prevent cross-tenant access
-        $tenant = $this->getCurrentTenant();
-        $assistant = $assistantId && $tenant 
-            ? PersonalAssistant::findForTenant($assistantId, $tenant->id) 
-            : $this->assistant;
+        $assistant = $assistantId ? PersonalAssistant::find($assistantId) : $this->assistant;
         
         if (!$assistant) {
             return;
@@ -308,9 +302,7 @@ class PersonalAssistantManager extends Component
 
     public function editSpecificAssistant($assistantId)
     {
-        // ✅ SECURITY: Use tenant-verified find to prevent cross-tenant access
-        $tenant = $this->getCurrentTenant();
-        $assistant = $tenant ? PersonalAssistant::findForTenant($assistantId, $tenant->id) : null;
+        $assistant = PersonalAssistant::find($assistantId);
         if (!$assistant) {
             return;
         }
@@ -332,9 +324,7 @@ class PersonalAssistantManager extends Component
 
     public function deleteSpecificAssistant($assistantId)
     {
-        // ✅ SECURITY: Use tenant-verified find to prevent cross-tenant access
-        $tenant = $this->getCurrentTenant();
-        $assistant = $tenant ? PersonalAssistant::findForTenant($assistantId, $tenant->id) : null;
+        $assistant = PersonalAssistant::find($assistantId);
         if (!$assistant) {
             return;
         }
@@ -357,9 +347,7 @@ class PersonalAssistantManager extends Component
 
     public function syncAssistant($assistantId)
     {
-        // ✅ SECURITY: Use tenant-verified find to prevent cross-tenant access
-        $tenant = $this->getCurrentTenant();
-        $assistant = $tenant ? PersonalAssistant::findForTenant($assistantId, $tenant->id) : null;
+        $assistant = PersonalAssistant::find($assistantId);
         if (!$assistant) {
             session()->flash('error', 'Assistant not found');
             return;
@@ -408,9 +396,7 @@ class PersonalAssistantManager extends Component
 
     public function openChat($assistantId)
     {
-        // ✅ SECURITY: Use tenant-verified find to prevent cross-tenant access
-        $tenant = $this->getCurrentTenant();
-        $assistant = $tenant ? PersonalAssistant::findForTenant($assistantId, $tenant->id) : null;
+        $assistant = PersonalAssistant::find($assistantId);
         if (!$assistant) {
             return;
         }
@@ -443,9 +429,7 @@ class PersonalAssistantManager extends Component
 
     public function getAssistantDetails($assistantId)
     {
-        // ✅ SECURITY: Use tenant-verified find to prevent cross-tenant access
-        $tenant = $this->getCurrentTenant();
-        $assistant = $tenant ? PersonalAssistant::findForTenant($assistantId, $tenant->id) : null;
+        $assistant = PersonalAssistant::find($assistantId);
         if (!$assistant) {
             return null;
         }
@@ -491,11 +475,7 @@ class PersonalAssistantManager extends Component
             return;
         }
 
-        // ✅ SECURITY: Use tenant-verified find to prevent cross-tenant access
-        $tenant = $this->getCurrentTenant();
-        $assistant = $tenant && $this->chattingAssistantId 
-            ? PersonalAssistant::findForTenant($this->chattingAssistantId, $tenant->id) 
-            : null;
+        $assistant = PersonalAssistant::find($this->chattingAssistantId);
         if (!$assistant) {
             return;
         }
