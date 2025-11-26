@@ -69,17 +69,33 @@ class ConnectWaba extends Component
 
         // Handle embedded signup callback
         if (request()->has('code') && request()->has('state') && request()->get('state') === 'embedded_signup') {
-            $this->handleEmbeddedSignupCallback(request()->get('code'));
+            // Check if opened in popup (has opener)
+            if (request()->hasHeader('Referer') || request()->get('popup') === '1') {
+                // This will be handled by the popup callback view
+                session()->put('embedded_signup_code', request()->get('code'));
+                session()->put('embedded_signup_popup', true);
+            } else {
+                // Regular page load - handle normally
+                $this->handleEmbeddedSignupCallback(request()->get('code'));
+            }
         }
         
         // Handle embedded signup errors
         if (request()->has('error') && request()->has('state') && request()->get('state') === 'embedded_signup') {
             $error = request()->get('error');
             $errorDescription = request()->get('error_description', 'Unknown error occurred');
-            $this->notify([
-                'message' => t('connection_failed').': '.$errorDescription,
-                'type' => 'danger',
-            ]);
+            
+            // Check if in popup
+            if (request()->hasHeader('Referer') || request()->get('popup') === '1') {
+                session()->put('embedded_signup_error', $error);
+                session()->put('embedded_signup_error_description', $errorDescription);
+                session()->put('embedded_signup_popup', true);
+            } else {
+                $this->notify([
+                    'message' => t('connection_failed').': '.$errorDescription,
+                    'type' => 'danger',
+                ]);
+            }
         }
 
         // Check if account is already connected
@@ -234,6 +250,98 @@ class ConnectWaba extends Component
 
             $this->notify([
                 'message' => t('webhook_connection_failed'),
+                'type' => 'danger',
+            ]);
+        }
+    }
+
+    /**
+     * Handle embedded signup from popup (direct access token)
+     * This method receives access token and business account ID directly from Facebook SDK
+     */
+    public function handleEmbeddedSignupFromPopup($accessToken, $businessAccountId)
+    {
+        try {
+            // Validate the received data
+            if (empty($accessToken) || empty($businessAccountId)) {
+                $this->notify([
+                    'message' => t('embedded_signup_not_configured'),
+                    'type' => 'danger',
+                ]);
+                return;
+            }
+
+            // Check for duplicates (same as manual connection)
+            $is_found_wm_business_account_id = TenantSetting::where('key', 'wm_business_account_id')
+                ->where('value', 'like', "%$businessAccountId%")
+                ->where('tenant_id', '!=', tenant_id())
+                ->exists();
+            $is_found_wm_access_token = TenantSetting::where('key', 'wm_access_token')
+                ->where('value', 'like', "%$accessToken%")
+                ->where('tenant_id', '!=', tenant_id())
+                ->exists();
+
+            if ($is_found_wm_business_account_id || $is_found_wm_access_token) {
+                $this->notify([
+                    'message' => t('you_cant_use_this_details_already_used_by_other'),
+                    'type' => 'danger',
+                ]);
+                return;
+            }
+
+            // Save the account details - SAME AS MANUAL CONNECTION
+            save_tenant_setting('whatsapp', 'wm_business_account_id', $businessAccountId);
+            save_tenant_setting('whatsapp', 'wm_access_token', $accessToken);
+
+            // Set account as connected
+            $this->account_connected = true;
+            $this->wm_business_account_id = $businessAccountId;
+            $this->wm_access_token = $accessToken;
+
+            // If admin webhook is connected, verify connection and complete setup
+            if ($this->admin_webhook_connected) {
+                save_tenant_setting('whatsapp', 'is_webhook_connected', 1);
+                $this->is_webhook_connected = 1;
+
+                // Verify connection and complete setup
+                $response = $this->loadTemplatesFromWhatsApp();
+                save_tenant_setting('whatsapp', 'is_whatsmark_connected', $response['status'] ? 1 : 0);
+                save_tenant_setting('whatsapp', 'wm_fb_app_id', $this->admin_fb_app_id);
+                save_tenant_setting('whatsapp', 'wm_fb_app_secret', $this->admin_fb_app_secret);
+
+                if ($response['status']) {
+                    $this->is_whatsmark_connected = 1;
+                    $this->notify([
+                        'message' => t('whatsapp_connected_successfully'),
+                        'type' => 'success',
+                    ], true);
+
+                    return redirect()->to(tenant_route('tenant.waba'));
+                } else {
+                    $this->notify([
+                        'message' => $response['message'],
+                        'type' => 'danger',
+                    ]);
+                }
+            } else {
+                // Move to webhook setup
+                save_tenant_setting('whatsapp', 'is_webhook_connected', 0);
+                save_tenant_setting('whatsapp', 'is_whatsmark_connected', 0);
+                $this->is_webhook_connected = 0;
+                $this->is_whatsmark_connected = 0;
+                $this->step = 2;
+
+                $this->notify([
+                    'message' => t('account_details_saved').' '.t('now_setup_webhook'),
+                    'type' => 'success',
+                ]);
+            }
+        } catch (\Exception $e) {
+            whatsapp_log('Embedded Signup Connection Failed', 'error', [
+                'error' => $e->getMessage(),
+            ], $e);
+            $this->notify([
+                'message' => t('connection_failed').': '.$e->getMessage(),
                 'type' => 'danger',
             ]);
         }
@@ -445,6 +553,29 @@ class ConnectWaba extends Component
     {
         // Check if embedded signup is configured
         $embedded_signup_configured = !empty($this->admin_fb_app_id) && !empty($this->admin_fb_config_id);
+
+        // Handle popup callback - send message to parent window
+        if (session()->get('embedded_signup_popup')) {
+            $code = session()->get('embedded_signup_code');
+            $error = session()->get('embedded_signup_error');
+            $errorDescription = session()->get('embedded_signup_error_description');
+            
+            session()->forget(['embedded_signup_popup', 'embedded_signup_code', 'embedded_signup_error', 'embedded_signup_error_description']);
+            
+            if ($code) {
+                // Return view that sends message to parent
+                return view('livewire.tenant.waba.embedded-signup-callback', [
+                    'code' => $code,
+                    'error' => null,
+                ]);
+            } elseif ($error) {
+                return view('livewire.tenant.waba.embedded-signup-callback', [
+                    'code' => null,
+                    'error' => $error,
+                    'error_description' => $errorDescription,
+                ]);
+            }
+        }
 
         return view('livewire.tenant.waba.connect-waba', [
             'wm_default_phone_number' => $this->account_connected ?

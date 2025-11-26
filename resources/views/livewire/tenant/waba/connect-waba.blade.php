@@ -49,18 +49,14 @@
                                     <p class="text-xs text-primary-700 dark:text-primary-300 mb-3">
                                         {{ t('emb_signup_info') }}
                                     </p>
-                                    @php
-                                        $redirectUri = tenant_route('tenant.connect', ['state' => 'embedded_signup']);
-                                        $apiVersion = get_setting('whatsapp.api_version', 'v21.0');
-                                        $oauthUrl = "https://www.facebook.com/{$apiVersion}/dialog/oauth?client_id={$admin_fb_app_id}&config_id={$admin_fb_config_id}&redirect_uri=" . urlencode($redirectUri) . "&response_type=code&scope=whatsapp_business_management,business_management&state=embedded_signup";
-                                    @endphp
-                                    <a href="{{ $oauthUrl }}" 
-                                       class="inline-flex items-center justify-center px-4 py-2 bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium rounded-lg transition-colors duration-200 w-full">
+                                    <button type="button" 
+                                            id="fb-embedded-signup-btn"
+                                            class="inline-flex items-center justify-center px-4 py-2 bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium rounded-lg transition-colors duration-200 w-full">
                                         <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
                                             <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                                         </svg>
                                         {{ t('connect_with_facebook') }}
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -461,19 +457,127 @@
 
 @if($embedded_signup_configured)
 @push('scripts')
+<div id="fb-root"></div>
 <script>
-    // Show loading state when user clicks Facebook login
-    document.addEventListener('DOMContentLoaded', function() {
-        const fbLoginBtn = document.querySelector('a[href*="facebook.com/v21.0/dialog/oauth"]');
-        if (fbLoginBtn) {
-            fbLoginBtn.addEventListener('click', function() {
-                // Show loading notification
-                if (typeof showNotification !== 'undefined') {
-                    showNotification('{{ t("opening_facebook_window") }}', 'info');
-                }
-            });
-        }
-    });
+    // Load Facebook SDK
+    (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        js.async = true;
+        js.defer = true;
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+
+    window.fbAsyncInit = function() {
+        FB.init({
+            appId: '{{ $admin_fb_app_id }}',
+            cookie: true,
+            xfbml: true,
+            version: 'v21.0'
+        });
+
+        // Handle embedded signup button click
+        document.addEventListener('DOMContentLoaded', function() {
+            const fbEmbeddedSignupBtn = document.getElementById('fb-embedded-signup-btn');
+            if (fbEmbeddedSignupBtn) {
+                fbEmbeddedSignupBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Show loading state
+                    const btn = this;
+                    const originalText = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>{{ t("opening_facebook_window") }}</span>';
+
+                    // Get redirect URI and config ID
+                    const redirectUri = '{{ tenant_route("tenant.connect", ["state" => "embedded_signup"]) }}';
+                    const configId = '{{ $admin_fb_config_id }}';
+                    const apiVersion = '{{ get_setting("whatsapp.api_version", "v21.0") }}';
+
+                    // Open Facebook Embedded Signup popup using OAuth dialog
+                    const popup = window.open(
+                        'https://www.facebook.com/' + apiVersion + '/dialog/oauth?' +
+                        'client_id={{ $admin_fb_app_id }}&' +
+                        'config_id=' + configId + '&' +
+                        'redirect_uri=' + encodeURIComponent(redirectUri + '&popup=1') + '&' +
+                        'response_type=code&' +
+                        'scope=whatsapp_business_management,business_management&' +
+                        'state=embedded_signup',
+                        'Facebook Login',
+                        'width=600,height=700,scrollbars=yes,resizable=yes,left=' + (screen.width/2 - 300) + ',top=' + (screen.height/2 - 350)
+                    );
+
+                    // Check if popup was blocked
+                    if (!popup || popup.closed || typeof popup.closed == 'undefined') {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                        if (typeof showNotification !== 'undefined') {
+                            showNotification('{{ t("connection_failed") }}: Popup blocked. Please allow popups for this site.', 'danger');
+                        }
+                        return;
+                    }
+
+                    // Listen for message from popup callback page
+                    const messageHandler = function(event) {
+                        // Verify origin for security
+                        if (event.origin !== window.location.origin) return;
+                        
+                        if (event.data && event.data.type === 'facebook_embedded_signup_callback') {
+                            clearInterval(checkPopup);
+                            window.removeEventListener('message', messageHandler);
+                            
+                            if (event.data.code) {
+                                // Close popup
+                                if (popup && !popup.closed) {
+                                    popup.close();
+                                }
+                                
+                                // Call Livewire method to handle the callback
+                                @this.call('handleEmbeddedSignupCallback', event.data.code)
+                                    .then(() => {
+                                        btn.disabled = false;
+                                        btn.innerHTML = originalText;
+                                        // Reload page to show updated state
+                                        window.location.reload();
+                                    })
+                                    .catch((error) => {
+                                        btn.disabled = false;
+                                        btn.innerHTML = originalText;
+                                        if (typeof showNotification !== 'undefined') {
+                                            showNotification('{{ t("connection_failed") }}', 'danger');
+                                        }
+                                    });
+                            } else if (event.data.error) {
+                                // Handle error
+                                if (popup && !popup.closed) {
+                                    popup.close();
+                                }
+                                btn.disabled = false;
+                                btn.innerHTML = originalText;
+                                if (typeof showNotification !== 'undefined') {
+                                    showNotification('{{ t("connection_failed") }}: ' + (event.data.error_description || event.data.error), 'danger');
+                                }
+                            }
+                        }
+                    };
+                    
+                    window.addEventListener('message', messageHandler);
+
+                    // Monitor popup for manual close
+                    const checkPopup = setInterval(function() {
+                        if (popup.closed) {
+                            clearInterval(checkPopup);
+                            window.removeEventListener('message', messageHandler);
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                        }
+                    }, 500);
+                });
+            }
+        });
+    };
 </script>
 @endpush
 @endif
