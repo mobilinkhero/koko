@@ -540,8 +540,15 @@ class WhatsAppWebhookController extends Controller
 
                         $template_bots = array_map($add_messages, $template_bots);
 
+                        // Track if any bot has responded to prevent duplicates
+                        $bot_responded = false;
+
                         // Iterate over template bots
                         foreach ($template_bots as $template) {
+                            if ($bot_responded) {
+                                break; // Stop if we already sent a response
+                            }
+                            
                             $template['rel_id'] = $contact_data->id;
                             if (!empty($contact_data->userid)) {
                                 $template['userid'] = $contact_data->userid;
@@ -554,24 +561,37 @@ class WhatsAppWebhookController extends Controller
 
                                 $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname . ' ' . $contact_data->lastname, '', '', false);
                                 $chatMessage = $this->storeBotMessages($template, $chatId, $contact_data, 'template_bot', $response);
+                                
+                                $bot_responded = true; // Mark that we sent a response
+                                break; // Stop processing more template bots
                             }
                         }
 
-                        // Iterate over message bots
-                        foreach ($message_bots as $message) {
-                            $message['rel_id'] = $contact_data->id;
-                            if (!empty($contact_data->userid)) {
-                                $message['userid'] = $contact_data->userid;
-                            }
-                            if (($message['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $message['trigger']))))) || ($message['reply_type'] == 2 && !empty(array_filter(explode(',', $message['trigger']), fn($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($message['reply_type'] == 3 && $this->is_first_time) || $message['reply_type'] == 4) {
+                        // Only process message bots if template bots didn't respond
+                        if (!$bot_responded) {
+                            // Iterate over message bots
+                            foreach ($message_bots as $message) {
+                                if ($bot_responded) {
+                                    break; // Stop if we already sent a response
+                                }
+                                
+                                $message['rel_id'] = $contact_data->id;
+                                if (!empty($contact_data->userid)) {
+                                    $message['userid'] = $contact_data->userid;
+                                }
+                                if (($message['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $message['trigger']))))) || ($message['reply_type'] == 2 && !empty(array_filter(explode(',', $message['trigger']), fn($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($message['reply_type'] == 3 && $this->is_first_time) || $message['reply_type'] == 4) {
 
-                                do_action('before_process_messagebot_sending_message', ['message' => $message, 'trigger_msg' => $trigger_msg, 'contact_number' => $contact_number, 'tenant_id' => $this->tenant_id, 'tenant_subdomain' => $this->tenant_subdoamin]);
+                                    do_action('before_process_messagebot_sending_message', ['message' => $message, 'trigger_msg' => $trigger_msg, 'contact_number' => $contact_number, 'tenant_id' => $this->tenant_id, 'tenant_subdomain' => $this->tenant_subdoamin]);
 
-                                // Use the tenant ID when sending the message
-                                $response = $this->setWaTenantId($this->tenant_id)->sendMessage($contact_number, $message, $metadata['phone_number_id']);
+                                    // Use the tenant ID when sending the message
+                                    $response = $this->setWaTenantId($this->tenant_id)->sendMessage($contact_number, $message, $metadata['phone_number_id']);
 
-                                $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname . ' ' . $contact_data->lastname, '', '', false);
-                                $chatMessage = $this->storeBotMessages($message, $chatId, $contact_data, '', $response);
+                                    $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname . ' ' . $contact_data->lastname, '', '', false);
+                                    $chatMessage = $this->storeBotMessages($message, $chatId, $contact_data, '', $response);
+                                    
+                                    $bot_responded = true; // Mark that we sent a response
+                                    break; // Stop processing more message bots
+                                }
                             }
                         }
                     }
