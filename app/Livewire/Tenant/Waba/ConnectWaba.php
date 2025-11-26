@@ -390,6 +390,98 @@ class ConnectWaba extends Component
     }
 
     /**
+     * Handle embedded signup with direct access token and business account ID
+     * This is called from JavaScript when user clicks the Facebook login button
+     */
+    public function handleEmbeddedSignupDirect($accessToken, $businessAccountId)
+    {
+        try {
+            // Validate inputs
+            if (empty($accessToken) || empty($businessAccountId)) {
+                $this->notify([
+                    'message' => t('connection_failed').': Missing required information',
+                    'type' => 'danger',
+                ]);
+                return;
+            }
+
+            // Check for duplicates (same as manual connection)
+            $is_found_wm_business_account_id = TenantSetting::where('key', 'wm_business_account_id')
+                ->where('value', 'like', "%$businessAccountId%")
+                ->where('tenant_id', '!=', tenant_id())
+                ->exists();
+            $is_found_wm_access_token = TenantSetting::where('key', 'wm_access_token')
+                ->where('value', 'like', "%$accessToken%")
+                ->where('tenant_id', '!=', tenant_id())
+                ->exists();
+
+            if ($is_found_wm_business_account_id || $is_found_wm_access_token) {
+                $this->notify([
+                    'message' => t('you_cant_use_this_details_already_used_by_other'),
+                    'type' => 'danger',
+                ]);
+                return;
+            }
+
+            // Save the account details - SAME AS MANUAL CONNECTION
+            save_tenant_setting('whatsapp', 'wm_business_account_id', $businessAccountId);
+            save_tenant_setting('whatsapp', 'wm_access_token', $accessToken);
+
+            // Set account as connected
+            $this->account_connected = true;
+            $this->wm_business_account_id = $businessAccountId;
+            $this->wm_access_token = $accessToken;
+
+            // If admin webhook is connected, verify connection and complete setup
+            if ($this->admin_webhook_connected) {
+                save_tenant_setting('whatsapp', 'is_webhook_connected', 1);
+                $this->is_webhook_connected = 1;
+
+                // Verify connection and complete setup
+                $response = $this->loadTemplatesFromWhatsApp();
+                save_tenant_setting('whatsapp', 'is_whatsmark_connected', $response['status'] ? 1 : 0);
+                save_tenant_setting('whatsapp', 'wm_fb_app_id', $this->admin_fb_app_id);
+                save_tenant_setting('whatsapp', 'wm_fb_app_secret', $this->admin_fb_app_secret);
+
+                if ($response['status']) {
+                    $this->is_whatsmark_connected = 1;
+                    $this->notify([
+                        'message' => t('whatsapp_connected_successfully'),
+                        'type' => 'success',
+                    ], true);
+
+                    return redirect()->to(tenant_route('tenant.waba'));
+                } else {
+                    $this->notify([
+                        'message' => $response['message'],
+                        'type' => 'danger',
+                    ]);
+                }
+            } else {
+                // Move to webhook setup
+                save_tenant_setting('whatsapp', 'is_webhook_connected', 0);
+                save_tenant_setting('whatsapp', 'is_whatsmark_connected', 0);
+                $this->is_webhook_connected = 0;
+                $this->is_whatsmark_connected = 0;
+                $this->step = 2;
+
+                $this->notify([
+                    'message' => t('account_details_saved').' '.t('now_setup_webhook'),
+                    'type' => 'success',
+                ]);
+            }
+        } catch (\Exception $e) {
+            whatsapp_log('Embedded Signup Direct Connection Failed', 'error', [
+                'error' => $e->getMessage(),
+            ], $e);
+            $this->notify([
+                'message' => t('connection_failed').': '.$e->getMessage(),
+                'type' => 'danger',
+            ]);
+        }
+    }
+
+    /**
      * Go back to step 1 to update account details
      */
     public function goBackToStep1()

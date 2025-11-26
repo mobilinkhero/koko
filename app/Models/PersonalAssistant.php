@@ -143,6 +143,27 @@ class PersonalAssistant extends Model
     }
 
     /**
+     * Find assistant by ID with explicit tenant verification
+     * This ensures tenant isolation even when global scope might not apply
+     * 
+     * @param int $id Assistant ID
+     * @param int|null $tenantId Optional tenant ID (uses current tenant if not provided)
+     * @return self|null
+     */
+    public static function findForTenant(int $id, ?int $tenantId = null): ?self
+    {
+        $tenantId = $tenantId ?? static::getCurrentTenant()?->id;
+        
+        if (!$tenantId) {
+            return null;
+        }
+
+        return static::where('id', $id)
+            ->where('tenant_id', $tenantId)
+            ->first();
+    }
+
+    /**
      * Get current tenant with fallback methods
      */
     protected static function getCurrentTenant()

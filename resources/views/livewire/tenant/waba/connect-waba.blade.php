@@ -49,7 +49,16 @@
                                     <p class="text-xs text-primary-700 dark:text-primary-300 mb-3">
                                         {{ t('emb_signup_info') }}
                                     </p>
-                                    <div id="fb-embedded-signup" class="w-full"></div>
+                                    <div class="flex items-center justify-center">
+                                        <button id="fb-login-button" 
+                                                class="inline-flex items-center px-4 py-2 bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#1877F2] focus:ring-offset-2">
+                                            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                                            </svg>
+                                            {{ t('connect_with_facebook') }}
+                                        </button>
+                                    </div>
+                                    <div id="fb-embedded-signup" class="w-full hidden"></div>
                                 </div>
                             </div>
                         </div>
@@ -470,7 +479,37 @@
             version: 'v18.0'
         });
 
-        // Listen for embedded signup completion
+        // Handle Facebook Login button click
+        document.getElementById('fb-login-button')?.addEventListener('click', function() {
+            FB.login(function(response) {
+                if (response.authResponse) {
+                    // User logged in and granted permissions
+                    const accessToken = response.authResponse.accessToken;
+                    
+                    // Get user's business accounts
+                    FB.api('/me/businesses', { access_token: accessToken }, function(businessResponse) {
+                        if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
+                            const businessAccountId = businessResponse.data[0].id;
+                            // Call Livewire method to handle the signup
+                            @this.call('handleEmbeddedSignupDirect', accessToken, businessAccountId);
+                        } else {
+                            // Try to get business account ID from the access token
+                            FB.api('/me', { access_token: accessToken, fields: 'id,name' }, function(userResponse) {
+                                // Use the user ID as business account ID (fallback)
+                                @this.call('handleEmbeddedSignupDirect', accessToken, userResponse.id);
+                            });
+                        }
+                    });
+                } else {
+                    console.error('User cancelled login or did not fully authorize.');
+                }
+            }, {
+                scope: 'whatsapp_business_management,business_management',
+                config_id: '{{ $admin_fb_config_id }}'
+            });
+        });
+
+        // Listen for embedded signup completion (fallback)
         FB.Event.subscribe('embedded_signup', function(response) {
             console.log('Embedded signup response:', response);
             
