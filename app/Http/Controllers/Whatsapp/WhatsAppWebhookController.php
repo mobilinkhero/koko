@@ -78,7 +78,7 @@ class WhatsAppWebhookController extends Controller
     {
         $feedData = file_get_contents('php://input');
 
-        if (! empty($feedData)) {
+        if (!empty($feedData)) {
             $payload = json_decode($feedData, true);
 
             // Special ping message handling
@@ -120,7 +120,7 @@ class WhatsAppWebhookController extends Controller
 
             // Check for message ID to prevent duplicate processing
             $message_id = $payload['entry'][0]['changes'][0]['value']['messages'][0]['id'] ?? '';
-            if (! empty($message_id)) {
+            if (!empty($message_id)) {
                 // Check if message already processed (similar to original code)
                 $found = $this->checkMessageProcessed($message_id);
                 if ($found) {
@@ -150,7 +150,7 @@ class WhatsAppWebhookController extends Controller
     protected function checkMessageProcessed(string $messageId): bool
     {
         // Implement logic to check if message is already in database
-        return \DB::table($this->tenant_subdoamin.'_chat_messages')
+        return \DB::table($this->tenant_subdoamin . '_chat_messages')
             ->where('message_id', $messageId)
             ->exists();
     }
@@ -187,13 +187,13 @@ class WhatsAppWebhookController extends Controller
 
     private function processBotSending(array $message_data)
     {
-        if (! empty($message_data['messages'])) {
+        if (!empty($message_data['messages'])) {
             $message = reset($message_data['messages']);
             $trigger_msg = isset($message['button']['text']) ? $message['button']['text'] : $message['text']['body'] ?? '';
-            if (! empty($message['interactive']) && $message['interactive']['type'] == 'button_reply') {
+            if (!empty($message['interactive']) && $message['interactive']['type'] == 'button_reply') {
                 $trigger_msg = $message['interactive']['button_reply']['id'];
             }
-            if (! empty($trigger_msg)) {
+            if (!empty($trigger_msg)) {
                 $contact = reset($message_data['contacts']);
                 $metadata = $message_data['metadata'];
 
@@ -234,7 +234,7 @@ class WhatsAppWebhookController extends Controller
                         $this->is_bot_stop = true;
                     }
 
-                    if (collect(get_tenant_setting_by_tenant_id('whats-mark', 'stop_bots_keyword', null, $this->tenant_id))->first(fn ($keyword) => str_contains($trigger_msg, $keyword))) {
+                    if (collect(get_tenant_setting_by_tenant_id('whats-mark', 'stop_bots_keyword', null, $this->tenant_id))->first(fn($keyword) => str_contains($trigger_msg, $keyword))) {
                         Chat::fromTenant($this->tenant_subdoamin)->where(['id' => $current_interaction->id, 'tenant_id' => $this->tenant_id])->update(['bot_stoped_time' => date('Y-m-d H:i:s'), 'is_bots_stoped' => '1']);
                         $this->is_bot_stop = true;
                     }
@@ -246,7 +246,7 @@ class WhatsAppWebhookController extends Controller
                         'will_process_ecommerce' => !$this->is_bot_stop
                     ]);
 
-                    if (! $this->is_bot_stop) {
+                    if (!$this->is_bot_stop) {
                         EcommerceLogger::info('📞 WEBHOOK: Bot not stopped, checking if should process ecommerce', [
                             'tenant_id' => $this->tenant_id,
                             'phone' => $contact_number
@@ -255,12 +255,12 @@ class WhatsAppWebhookController extends Controller
                         // Check if e-commerce is configured and active BEFORE processing
                         $ecommerceConfig = \App\Models\Tenant\EcommerceConfiguration::where('tenant_id', $this->tenant_id)->first();
                         $shouldProcessEcommerce = false;
-                        
+
                         if ($ecommerceConfig) {
-                            $shouldProcessEcommerce = $ecommerceConfig->is_configured && 
-                                                     $ecommerceConfig->ai_powered_mode && 
-                                                     !empty($ecommerceConfig->openai_api_key);
-                            
+                            $shouldProcessEcommerce = $ecommerceConfig->is_configured &&
+                                $ecommerceConfig->ai_powered_mode &&
+                                !empty($ecommerceConfig->openai_api_key);
+
                             EcommerceLogger::info('📞 WEBHOOK: E-commerce configuration check', [
                                 'tenant_id' => $this->tenant_id,
                                 'is_configured' => $ecommerceConfig->is_configured ?? false,
@@ -306,14 +306,14 @@ class WhatsAppWebhookController extends Controller
                                 ]);
 
                                 $ecommerceService = new EcommerceOrderService($this->tenant_id);
-                                
+
                                 EcommerceLogger::info('📞 WEBHOOK: EcommerceOrderService created, calling processMessage', [
                                     'tenant_id' => $this->tenant_id,
                                     'service_created' => isset($ecommerceService),
                                     'message' => $trigger_msg
                                 ]);
                                 $ecommerceResult = $ecommerceService->processMessage($trigger_msg, $contact_data);
-                                
+
                                 EcommerceLogger::info('📞 WEBHOOK: Ecommerce processing completed', [
                                     'tenant_id' => $this->tenant_id,
                                     'phone' => $contact_number,
@@ -323,7 +323,7 @@ class WhatsAppWebhookController extends Controller
                                     'has_buttons' => !empty($ecommerceResult['buttons']),
                                     'full_result' => $ecommerceResult
                                 ]);
-                                
+
                                 if ($ecommerceResult['handled'] && $ecommerceResult['response']) {
                                     EcommerceLogger::info('📞 WEBHOOK: Preparing to send ecommerce response', [
                                         'tenant_id' => $this->tenant_id,
@@ -332,8 +332,8 @@ class WhatsAppWebhookController extends Controller
                                     ]);
 
                                     EcommerceLogger::botInteraction(
-                                        $contact_number, 
-                                        $trigger_msg, 
+                                        $contact_number,
+                                        $trigger_msg,
                                         $ecommerceResult['response'],
                                         ['source' => 'WhatsApp Webhook']
                                     );
@@ -351,7 +351,7 @@ class WhatsAppWebhookController extends Controller
                                         'sending_count' => 0,
                                         'filename' => '',
                                     ];
-                                    
+
                                     // Add interactive buttons if provided
                                     try {
                                         if (!empty($ecommerceResult['buttons'])) {
@@ -360,7 +360,7 @@ class WhatsAppWebhookController extends Controller
                                                 'phone' => $contact_number,
                                                 'buttons_count' => count($ecommerceResult['buttons'])
                                             ]);
-                                            
+
                                             // Create button message using existing WhatsApp trait pattern
                                             $buttonMessage = [
                                                 'type' => 'text',
@@ -374,7 +374,7 @@ class WhatsAppWebhookController extends Controller
                                                 'sending_count' => 0,
                                                 'filename' => '',
                                             ];
-                                            
+
                                             // Add up to 3 buttons
                                             $buttons = array_slice($ecommerceResult['buttons'], 0, 3);
                                             foreach ($buttons as $index => $button) {
@@ -382,7 +382,7 @@ class WhatsAppWebhookController extends Controller
                                                 $buttonMessage["button{$buttonNum}_id"] = $button['id'];
                                                 $buttonMessage["button{$buttonNum}"] = substr($button['text'] ?? $button['title'] ?? 'Button', 0, 20);
                                             }
-                                            
+
                                             EcommerceLogger::info('📞 WEBHOOK: Sending message with buttons', [
                                                 'tenant_id' => $this->tenant_id,
                                                 'phone' => $contact_number,
@@ -390,7 +390,7 @@ class WhatsAppWebhookController extends Controller
                                             ]);
 
                                             $response = $this->setWaTenantId($this->tenant_id)->sendMessage($contact_number, $buttonMessage, $metadata['phone_number_id']);
-                                            
+
                                             EcommerceLogger::info('📞 WEBHOOK: Message with buttons sent', [
                                                 'tenant_id' => $this->tenant_id,
                                                 'phone' => $contact_number,
@@ -402,26 +402,26 @@ class WhatsAppWebhookController extends Controller
                                                 'phone' => $contact_number,
                                                 'message_data' => $ecommerceMessage
                                             ]);
-                                            
+
                                             $response = $this->setWaTenantId($this->tenant_id)->sendMessage($contact_number, $ecommerceMessage, $metadata['phone_number_id']);
-                                            
+
                                             EcommerceLogger::info('📞 WEBHOOK: Message without buttons sent', [
                                                 'tenant_id' => $this->tenant_id,
-                                                'phone' => $contact_number, 
+                                                'phone' => $contact_number,
                                                 'response' => $response
                                             ]);
                                         }
-                                        
+
                                         $chatId = $this->createOrUpdateInteraction(
-                                            $contact_number, 
-                                            $message_data['metadata']['display_phone_number'], 
-                                            $message_data['metadata']['phone_number_id'], 
-                                            $contact_data->firstname.' '.$contact_data->lastname, 
-                                            '', 
-                                            '', 
+                                            $contact_number,
+                                            $message_data['metadata']['display_phone_number'],
+                                            $message_data['metadata']['phone_number_id'],
+                                            $contact_data->firstname . ' ' . $contact_data->lastname,
+                                            '',
+                                            '',
                                             false
                                         );
-                                        
+
                                         $this->storeBotMessages($ecommerceMessage, $chatId, $contact_data, 'ecommerce_bot', $response);
                                     } catch (\Exception $sendEx) {
                                         EcommerceLogger::error('Failed to send e-commerce message', [
@@ -432,13 +432,13 @@ class WhatsAppWebhookController extends Controller
                                         ]);
                                         throw $sendEx;
                                     }
-                                    
+
                                     EcommerceLogger::info('E-commerce response sent successfully', [
                                         'tenant_id' => $this->tenant_id,
                                         'phone' => $contact_number,
                                         'response_sent' => true
                                     ]);
-                                    
+
                                     // Exit early if e-commerce handled the message
                                     return;
                                 }
@@ -459,7 +459,7 @@ class WhatsAppWebhookController extends Controller
                                 'will_process_traditional_bots' => true
                             ]);
                         }
-                        
+
                         // Fetch template and message bots based on interaction
                         $template_bots = TemplateBot::getTemplateBotsByRelType($contact_data->type ?? '', $query_trigger_msg, $this->tenant_id, $reply_type);
                         $message_bots = MessageBot::getMessageBotsbyRelType($contact_data->type ?? '', $query_trigger_msg, $this->tenant_id, $reply_type);
@@ -482,16 +482,16 @@ class WhatsAppWebhookController extends Controller
                         // Iterate over template bots
                         foreach ($template_bots as $template) {
                             $template['rel_id'] = $contact_data->id;
-                            if (! empty($contact_data->userid)) {
+                            if (!empty($contact_data->userid)) {
                                 $template['userid'] = $contact_data->userid;
                             }
 
                             // Send template on exact match, contains, or first time
-                            if (($template['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $template['trigger']))))) || ($template['reply_type'] == 2 && ! empty(array_filter(explode(',', $template['trigger']), fn ($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($template['reply_type'] == 3 && $this->is_first_time) || $template['reply_type'] == 4) {
+                            if (($template['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $template['trigger']))))) || ($template['reply_type'] == 2 && !empty(array_filter(explode(',', $template['trigger']), fn($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($template['reply_type'] == 3 && $this->is_first_time) || $template['reply_type'] == 4) {
                                 // Use the tenant ID when sending the template
                                 $response = $this->setWaTenantId($this->tenant_id)->sendTemplate($contact_number, $template, 'template_bot', $metadata['phone_number_id']);
 
-                                $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname.' '.$contact_data->lastname, '', '', false);
+                                $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname . ' ' . $contact_data->lastname, '', '', false);
                                 $chatMessage = $this->storeBotMessages($template, $chatId, $contact_data, 'template_bot', $response);
                             }
                         }
@@ -499,17 +499,17 @@ class WhatsAppWebhookController extends Controller
                         // Iterate over message bots
                         foreach ($message_bots as $message) {
                             $message['rel_id'] = $contact_data->id;
-                            if (! empty($contact_data->userid)) {
+                            if (!empty($contact_data->userid)) {
                                 $message['userid'] = $contact_data->userid;
                             }
-                            if (($message['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $message['trigger']))))) || ($message['reply_type'] == 2 && ! empty(array_filter(explode(',', $message['trigger']), fn ($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($message['reply_type'] == 3 && $this->is_first_time) || $message['reply_type'] == 4) {
+                            if (($message['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $message['trigger']))))) || ($message['reply_type'] == 2 && !empty(array_filter(explode(',', $message['trigger']), fn($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($message['reply_type'] == 3 && $this->is_first_time) || $message['reply_type'] == 4) {
 
                                 do_action('before_process_messagebot_sending_message', ['message' => $message, 'trigger_msg' => $trigger_msg, 'contact_number' => $contact_number, 'tenant_id' => $this->tenant_id, 'tenant_subdomain' => $this->tenant_subdoamin]);
 
                                 // Use the tenant ID when sending the message
                                 $response = $this->setWaTenantId($this->tenant_id)->sendMessage($contact_number, $message, $metadata['phone_number_id']);
 
-                                $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname.' '.$contact_data->lastname, '', '', false);
+                                $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname . ' ' . $contact_data->lastname, '', '', false);
                                 $chatMessage = $this->storeBotMessages($message, $chatId, $contact_data, '', $response);
                             }
                         }
@@ -525,7 +525,7 @@ class WhatsAppWebhookController extends Controller
                         $th,
                         $this->tenant_id
                     );
-                    file_put_contents(base_path().'/errors.json', json_encode([$th->getMessage()]));
+                    file_put_contents(base_path() . '/errors.json', json_encode([$th->getMessage()]));
                 }
             }
         }
@@ -602,7 +602,7 @@ class WhatsAppWebhookController extends Controller
         ]);
 
         if (
-            ! empty($this->pusher_settings['app_key']) && ! empty($this->pusher_settings['app_secret']) && ! empty($this->pusher_settings['app_id']) && ! empty($this->pusher_settings['cluster'])
+            !empty($this->pusher_settings['app_key']) && !empty($this->pusher_settings['app_secret']) && !empty($this->pusher_settings['app_id']) && !empty($this->pusher_settings['cluster'])
         ) {
             // Use centralized notification method with enhanced metadata
             self::triggerChatNotificationStatic($interaction_id, $message_id, $this->tenant_id, true);
@@ -614,7 +614,7 @@ class WhatsAppWebhookController extends Controller
      */
     protected function isFirstTimeInteraction(string $from): bool
     {
-        return ! (bool) Chat::fromTenant($this->tenant_subdoamin)->where('receiver_id', $from)->count();
+        return !(bool) Chat::fromTenant($this->tenant_subdoamin)->where('receiver_id', $from)->count();
     }
 
     /**
@@ -630,7 +630,7 @@ class WhatsAppWebhookController extends Controller
             case 'button':
                 return $messageEntry['button']['text'] ?? '';
             case 'reaction':
-                return json_decode('"'.($messageEntry['reaction']['emoji'] ?? '').'"', false, 512, JSON_UNESCAPED_UNICODE);
+                return json_decode('"' . ($messageEntry['reaction']['emoji'] ?? '') . '"', false, 512, JSON_UNESCAPED_UNICODE);
             case 'image':
             case 'audio':
             case 'document':
@@ -704,7 +704,7 @@ class WhatsAppWebhookController extends Controller
                 // For guest type, use the new chat ID; for others, use contact ID
                 $identifierForCheck = ($conversationType === 'guest') ? $newChatId : ($contact_data->id ?? '');
 
-                if (! empty($identifierForCheck)) {
+                if (!empty($identifierForCheck)) {
                     if ($featureService->checkConversationLimit($identifierForCheck, $this->tenant_id, $this->tenant_subdoamin, $conversationType)) {
                         // Log the limit but don't block incoming messages (customer service)
                         whatsapp_log('Conversation limit reached for new interaction', 'warning', [
@@ -797,10 +797,10 @@ class WhatsAppWebhookController extends Controller
                         ]);
 
                         if (
-                            ! empty($this->pusher_settings['app_key']) &&
-                            ! empty($this->pusher_settings['app_secret']) &&
-                            ! empty($this->pusher_settings['app_id']) &&
-                            ! empty($this->pusher_settings['cluster'])
+                            !empty($this->pusher_settings['app_key']) &&
+                            !empty($this->pusher_settings['app_secret']) &&
+                            !empty($this->pusher_settings['app_id']) &&
+                            !empty($this->pusher_settings['cluster'])
                         ) {
                             // Use centralized notification method with enhanced metadata
                             self::triggerChatNotificationStatic($message->interaction_id, $message->id, $this->tenant_id, false);
@@ -841,7 +841,7 @@ class WhatsAppWebhookController extends Controller
 
         // Extract fields from changes using collections
         $fields = collect($data->get('entry', []))
-            ->flatMap(fn ($entry) => collect($entry['changes'] ?? []))
+            ->flatMap(fn($entry) => collect($entry['changes'] ?? []))
             ->pluck('field')
             ->filter()
             ->unique();
@@ -849,7 +849,7 @@ class WhatsAppWebhookController extends Controller
         // Check if any field matches the enabled fields
         $isFieldAllowed = $fields->intersect($enabled_fields)->isNotEmpty();
 
-        if (! $isFieldAllowed) {
+        if (!$isFieldAllowed) {
             whatsapp_log('Webhook Forward Skipped', 'info', [
                 'reason' => 'No enabled fields found for resend',
                 'fields' => $fields,
@@ -887,19 +887,19 @@ class WhatsAppWebhookController extends Controller
         $contact = Contact::fromTenant($this->tenant_subdoamin)->where('tenant_id', $this->tenant_id)
             ->where(function ($query) use ($from) {
                 $query->where('phone', $from)
-                    ->orWhere('phone', '+'.$from);
+                    ->orWhere('phone', '+' . $from);
             })
             ->first();
         if ($contact) {
             return $contact;
         }
-        if (get_tenant_setting_by_tenant_id('whats-mark', 'auto_lead_enabled', null, $this->tenant_id) && ! $this->featureLimitChecker->hasReachedLimit('contacts', Contact::class, [], true, $this->tenant_id)) {
+        if (get_tenant_setting_by_tenant_id('whats-mark', 'auto_lead_enabled', null, $this->tenant_id) && !$this->featureLimitChecker->hasReachedLimit('contacts', Contact::class, [], true, $this->tenant_id)) {
             $name = explode(' ', $name);
             $contact = Contact::fromTenant($this->tenant_subdoamin)->create([
                 'firstname' => $name[0],
                 'lastname' => count($name) > 1 ? implode(' ', array_slice($name, 1)) : '',
                 'type' => 'lead',
-                'phone' => $from[0] === '+' ? $from : '+'.$from,
+                'phone' => $from[0] === '+' ? $from : '+' . $from,
                 'assigned_id' => get_tenant_setting_by_tenant_id('whats-mark', 'lead_assigned_to', null, $this->tenant_id),
                 'status_id' => get_tenant_setting_by_tenant_id('whats-mark', 'lead_status', null, $this->tenant_id),
                 'source_id' => get_tenant_setting_by_tenant_id('whats-mark', 'lead_source', null, $this->tenant_id),
@@ -924,12 +924,12 @@ class WhatsAppWebhookController extends Controller
             $footer = parseText($data['rel_type'], 'footer', $data);
 
             $buttonHtml = '';
-            if (! empty(json_decode($data['buttons_data']))) {
+            if (!empty(json_decode($data['buttons_data']))) {
                 $buttons = json_decode($data['buttons_data']);
                 $buttonHtml = "<div class='flex flex-col mt-2 space-y-2'>";
                 foreach ($buttons as $button) {
                     $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full
-                        dark:bg-gray-800 dark:text-success-400'>".e($button->text).'</button>';
+                        dark:bg-gray-800 dark:text-success-400'>" . e($button->text) . '</button>';
                 }
                 $buttonHtml .= '</div>';
             }
@@ -937,17 +937,17 @@ class WhatsAppWebhookController extends Controller
             $headerData = '';
             $fileExtensions = get_meta_allowed_extension();
             $extension = strtolower(pathinfo($data['filename'], PATHINFO_EXTENSION));
-            $fileType = array_key_first(array_filter($fileExtensions, fn ($data) => in_array('.'.$extension, explode(', ', $data['extension']))));
+            $fileType = array_key_first(array_filter($fileExtensions, fn($data) => in_array('.' . $extension, explode(', ', $data['extension']))));
             if ($data['header_data_format'] === 'IMAGE' && $fileType == 'image') {
-                $headerData = "<a href='".asset('storage/'.$data['filename'])."' data-lightbox='image-group'>
-                <img src='".asset('storage/'.$data['filename'])."' class='rounded-lg w-full mb-2'>
+                $headerData = "<a href='" . asset('storage/' . $data['filename']) . "' data-lightbox='image-group'>
+                <img src='" . asset('storage/' . $data['filename']) . "' class='rounded-lg w-full mb-2'>
             </a>";
             } elseif ($data['header_data_format'] === 'TEXT' || $data['header_data_format'] === '') {
-                $headerData = "<span class='font-bold mb-3'>".nl2br(decodeWhatsAppSigns(e($header ?? ''))).'</span>';
+                $headerData = "<span class='font-bold mb-3'>" . nl2br(decodeWhatsAppSigns(e($header ?? ''))) . '</span>';
             } elseif ($data['header_data_format'] === 'DOCUMENT') {
-                $headerData = "<a href='".asset('storage/'.$data['filename'])."' target='_blank' class='btn btn-secondary w-full'>".t('document').'</a>';
+                $headerData = "<a href='" . asset('storage/' . $data['filename']) . "' target='_blank' class='btn btn-secondary w-full'>" . t('document') . '</a>';
             } elseif ($data['header_data_format'] === 'VIDEO') {
-                $headerData = "<video src='".asset('storage/'.$data['filename'])."' controls class='rounded-lg w-full'></video>";
+                $headerData = "<video src='" . asset('storage/' . $data['filename']) . "' controls class='rounded-lg w-full'></video>";
             }
 
             TemplateBot::where(['id' => $data['id'], 'tenant_id' => $this->tenant_id])->update(['sending_count' => $data['sending_count'] + 1]);
@@ -958,8 +958,8 @@ class WhatsAppWebhookController extends Controller
                 'url' => null,
                 'message' => "
                 $headerData
-                <p>".nl2br(decodeWhatsAppSigns(e($body)))."</p>
-                <span class='text-gray-500 text-sm'>".nl2br(decodeWhatsAppSigns(e($footer ?? '')))."</span>
+                <p>" . nl2br(decodeWhatsAppSigns(e($body))) . "</p>
+                <span class='text-gray-500 text-sm'>" . nl2br(decodeWhatsAppSigns(e($footer ?? ''))) . "</span>
                 $buttonHtml
             ",
                 'status' => 'sent',
@@ -974,7 +974,7 @@ class WhatsAppWebhookController extends Controller
             $message_id = ChatMessage::fromTenant($this->tenant_subdoamin)->insertGetId($chat_message);
 
             if (
-                ! empty($this->pusher_settings['app_key']) && ! empty($this->pusher_settings['app_secret']) && ! empty($this->pusher_settings['app_id']) && ! empty($this->pusher_settings['cluster'])
+                !empty($this->pusher_settings['app_key']) && !empty($this->pusher_settings['app_secret']) && !empty($this->pusher_settings['app_id']) && !empty($this->pusher_settings['cluster'])
             ) {
                 // Use centralized notification method with enhanced metadata
                 self::triggerChatNotificationStatic($interactionId, $message_id, $this->tenant_id, false);
@@ -995,43 +995,43 @@ class WhatsAppWebhookController extends Controller
         $buttonHtml = "<div class='flex flex-col mt-2 space-y-2'>";
         $option = false;
 
-        if (! empty($data['button1_id'])) {
+        if (!empty($data['button1_id'])) {
             $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full
-               dark:bg-gray-800 dark:text-success-400'>".e($data['button1']).'</button>';
+               dark:bg-gray-800 dark:text-success-400'>" . e($data['button1']) . '</button>';
             $option = true;
         }
-        if (! empty($data['button2_id'])) {
+        if (!empty($data['button2_id'])) {
             $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full
-               dark:bg-gray-800 dark:text-success-400'>".e($data['button2']).'</button>';
+               dark:bg-gray-800 dark:text-success-400'>" . e($data['button2']) . '</button>';
             $option = true;
         }
-        if (! empty($data['button3_id'])) {
+        if (!empty($data['button3_id'])) {
             $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full
-               dark:bg-gray-800 dark:text-success-400'>".e($data['button3']).'</button>';
+               dark:bg-gray-800 dark:text-success-400'>" . e($data['button3']) . '</button>';
             $option = true;
         }
-        if (! $option && ! empty($data['button_name']) && ! empty($data['button_url']) && filter_var($data['button_url'], FILTER_VALIDATE_URL)) {
-            $buttonHtml .= "<a href='".e($data['button_url'])."' class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full
-               dark:bg-gray-800 dark:text-success-400 mt-2'> <svg class='w-4 h-4 text-success-500' aria-hidden='true' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'> <path stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778'/> </svg><span class='whitespace-nowrap'>".e($data['button_name']).'</a>';
+        if (!$option && !empty($data['button_name']) && !empty($data['button_url']) && filter_var($data['button_url'], FILTER_VALIDATE_URL)) {
+            $buttonHtml .= "<a href='" . e($data['button_url']) . "' class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full
+               dark:bg-gray-800 dark:text-success-400 mt-2'> <svg class='w-4 h-4 text-success-500' aria-hidden='true' xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'> <path stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M18 14v4.833A1.166 1.166 0 0 1 16.833 20H5.167A1.167 1.167 0 0 1 4 18.833V7.167A1.166 1.166 0 0 1 5.167 6h4.618m4.447-2H20v5.768m-7.889 2.121 7.778-7.778'/> </svg><span class='whitespace-nowrap'>" . e($data['button_name']) . '</a>';
             $option = true;
         }
 
         $extension = strtolower(pathinfo($data['filename'], PATHINFO_EXTENSION));
-        $fileType = array_key_first(array_filter($allowedExtensions, fn ($data) => in_array('.'.$extension, explode(', ', $data['extension']))));
-        if (! $option && ! empty($data['filename']) && $fileType == 'image') {
-            $headerImage = "<a href='".asset('storage/'.$data['filename'])."' data-lightbox='image-group'>
-            <img src='".asset('storage/'.$data['filename'])."' class='rounded-lg w-full mb-2'>
+        $fileType = array_key_first(array_filter($allowedExtensions, fn($data) => in_array('.' . $extension, explode(', ', $data['extension']))));
+        if (!$option && !empty($data['filename']) && $fileType == 'image') {
+            $headerImage = "<a href='" . asset('storage/' . $data['filename']) . "' data-lightbox='image-group'>
+            <img src='" . asset('storage/' . $data['filename']) . "' class='rounded-lg w-full mb-2'>
         </a>";
         }
-        if (! $option && ! empty($data['filename']) && $fileType == 'document') {
-            $headerImage = "<a href='".asset('storage/'.$data['filename'])."' target='_blank' class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full
-               dark:bg-gray-800 dark:text-success-400'>".t('document').'</a>';
+        if (!$option && !empty($data['filename']) && $fileType == 'document') {
+            $headerImage = "<a href='" . asset('storage/' . $data['filename']) . "' target='_blank' class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full
+               dark:bg-gray-800 dark:text-success-400'>" . t('document') . '</a>';
         }
-        if (! $option && ! empty($data['filename']) && $fileType == 'video') {
-            $headerImage = "<video src='".asset('storage/'.$data['filename'])."' controls class='rounded-lg w-full'></video>";
+        if (!$option && !empty($data['filename']) && $fileType == 'video') {
+            $headerImage = "<video src='" . asset('storage/' . $data['filename']) . "' controls class='rounded-lg w-full'></video>";
         }
-        if (! $option && ! empty($data['filename']) && $fileType == 'audio') {
-            $headerImage = "<audio controls class='w-64'><source src='".asset('storage/'.$data['filename'])."' type='audio/mpeg'></audio>";
+        if (!$option && !empty($data['filename']) && $fileType == 'audio') {
+            $headerImage = "<audio controls class='w-64'><source src='" . asset('storage/' . $data['filename']) . "' type='audio/mpeg'></audio>";
         }
         $buttonHtml .= '</div>';
 
@@ -1046,10 +1046,10 @@ class WhatsAppWebhookController extends Controller
             'interaction_id' => $interactionId,
             'sender_id' => get_tenant_setting_by_tenant_id('whatsapp', 'wm_default_phone_number', null, $this->tenant_id),
             'url' => null,
-            'message' => $headerImage."
-            <span class='font-bold mb-3'>".nl2br(e($header ?? '')).'</span>
-            <p>'.nl2br(decodeWhatsAppSigns(e($body)))."</p>
-            <span class='text-gray-500 text-sm'>".nl2br(e($footer ?? ''))."</span>
+            'message' => $headerImage . "
+            <span class='font-bold mb-3'>" . nl2br(e($header ?? '')) . '</span>
+            <p>' . nl2br(decodeWhatsAppSigns(e($body))) . "</p>
+            <span class='text-gray-500 text-sm'>" . nl2br(e($footer ?? '')) . "</span>
             $buttondata
         ",
             'status' => 'sent',
@@ -1064,7 +1064,7 @@ class WhatsAppWebhookController extends Controller
         $message_id = ChatMessage::fromTenant($this->tenant_subdoamin)->insertGetId($chat_message);
 
         if (
-            ! empty($this->pusher_settings['app_key']) && ! empty($this->pusher_settings['app_secret']) && ! empty($this->pusher_settings['app_id']) && ! empty($this->pusher_settings['cluster'])
+            !empty($this->pusher_settings['app_key']) && !empty($this->pusher_settings['app_secret']) && !empty($this->pusher_settings['app_id']) && !empty($this->pusher_settings['cluster'])
         ) {
             // Use centralized notification method with enhanced metadata
             self::triggerChatNotificationStatic($interactionId, $message_id, $this->tenant_id, false);
@@ -1090,13 +1090,13 @@ class WhatsAppWebhookController extends Controller
 
             // Find existing chat/interaction
             $query = Chat::fromTenant($this->tenant_subdoamin);
-            if (! empty($type_id)) {
+            if (!empty($type_id)) {
                 $query->where('type', $type)
                     ->where('type_id', $type_id);
             }
             $existing_interaction = $query->where('id', $id)->first();
 
-            if (! $existing_interaction) {
+            if (!$existing_interaction) {
                 return response()->json(['error' => 'Interaction not found'], 404);
             }
 
@@ -1168,7 +1168,7 @@ class WhatsAppWebhookController extends Controller
             $message_data = [];
 
             // Add text message if provided
-            if (! empty($message)) {
+            if (!empty($message)) {
                 $message_data[] = [
                     'type' => 'text',
                     'text' => [
@@ -1187,13 +1187,13 @@ class WhatsAppWebhookController extends Controller
             ];
 
             foreach ($attachments as $type => $file) {
-                if (! empty($file)) {
+                if (!empty($file)) {
                     $file_url = $this->handle_attachment_upload($file);
 
                     $message_data[] = [
                         'type' => $type,
                         $type => [
-                            'url' => url('storage/whatsapp-attachments/'.$file_url),
+                            'url' => url('storage/whatsapp-attachments/' . $file_url),
                         ],
                     ];
                 }
@@ -1300,7 +1300,7 @@ class WhatsAppWebhookController extends Controller
 
                     // Broadcast message via Pusher if enabled
                     if (
-                        ! empty(get_tenant_setting_by_tenant_id('pusher', 'app_key', null, $this->tenant_id)) && ! empty(get_tenant_setting_by_tenant_id('pusher', 'app_secret', null, $this->tenant_id)) && ! empty(get_tenant_setting_by_tenant_id('pusher', 'app_id', null, $this->tenant_id)) && ! empty(get_tenant_setting_by_tenant_id('pusher', 'cluster', null, $this->tenant_id))
+                        !empty(get_tenant_setting_by_tenant_id('pusher', 'app_key', null, $this->tenant_id)) && !empty(get_tenant_setting_by_tenant_id('pusher', 'app_secret', null, $this->tenant_id)) && !empty(get_tenant_setting_by_tenant_id('pusher', 'app_id', null, $this->tenant_id)) && !empty(get_tenant_setting_by_tenant_id('pusher', 'cluster', null, $this->tenant_id))
                     ) {
                         // Use centralized notification method with enhanced metadata
                         self::triggerChatNotificationStatic($interaction_id, $message_id, $this->tenant_id, false);
@@ -1328,7 +1328,7 @@ class WhatsAppWebhookController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Internal server error: '.$e->getMessage(),
+                'message' => 'Internal server error: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -1352,7 +1352,7 @@ class WhatsAppWebhookController extends Controller
         $cleanName = Str::slug($originalName, '_'); // e.g., "WhatsApp_Video_2025_02_20_at_13_06_57_08d1199a"
 
         // Append timestamp to ensure uniqueness
-        $fileName = time().'_'.$cleanName.'.'.$extension;
+        $fileName = time() . '_' . $cleanName . '.' . $extension;
 
         // Store the file
         $file->storeAs('whatsapp-attachments', $fileName, 'public');
@@ -1403,7 +1403,7 @@ class WhatsAppWebhookController extends Controller
                 $type
             );
 
-            return ! $hasActiveSession; // Track if no active session
+            return !$hasActiveSession; // Track if no active session
         } catch (\Exception $e) {
             whatsapp_log('Error checking conversation tracking need', 'error', [
                 'identifier' => $identifier,
@@ -1488,7 +1488,7 @@ class WhatsAppWebhookController extends Controller
                 'wa_no' => $metadata['display_phone_number'],
             ])->first();
 
-            if (! $current_interaction) {
+            if (!$current_interaction) {
                 $interaction_id = $this->createOrUpdateInteraction(
                     $contact_number,
                     $metadata['display_phone_number'],
@@ -1526,7 +1526,7 @@ class WhatsAppWebhookController extends Controller
                 'ref_message_id' => $ref_message_id,
             ]);
 
-            if (! $flow_execution) {
+            if (!$flow_execution) {
                 whatsapp_log('No flow execution - trying legacy bots', 'info');
             }
         } catch (\Throwable $th) {
@@ -1547,7 +1547,7 @@ class WhatsAppWebhookController extends Controller
             return $message['button']['text'];
         } elseif (isset($message['text']['body'])) {
             return $message['text']['body'];
-        } elseif (! empty($message['interactive'])) {
+        } elseif (!empty($message['interactive'])) {
             if ($message['interactive']['type'] == 'button_reply') {
                 return $message['interactive']['button_reply']['id'];
             } elseif ($message['interactive']['type'] == 'list_reply') {
@@ -1563,7 +1563,7 @@ class WhatsAppWebhookController extends Controller
         $buttonId = null;
 
         // Extract button ID if this is a button/list response
-        if (! empty($message['interactive'])) {
+        if (!empty($message['interactive'])) {
             if ($message['interactive']['type'] == 'button_reply') {
                 $buttonId = $message['interactive']['button_reply']['id'];
 
@@ -1591,7 +1591,7 @@ class WhatsAppWebhookController extends Controller
      */
     private function shouldSkipBotFlow($interaction, $trigger_msg)
     {
-        if (! $interaction) {
+        if (!$interaction) {
             return false;
         }
 
@@ -1614,7 +1614,7 @@ class WhatsAppWebhookController extends Controller
 
         // Check if this message should stop the bot
         $stopKeywords = collect(get_setting('whats-mark.stop_bots_keyword'));
-        if ($stopKeywords->first(fn ($keyword) => str_contains(strtolower($trigger_msg), strtolower($keyword)))) {
+        if ($stopKeywords->first(fn($keyword) => str_contains(strtolower($trigger_msg), strtolower($keyword)))) {
             Chat::fromTenant($this->tenant_subdoamin)->where('id', $interaction->id)->update([
                 'bot_stoped_time' => date('Y-m-d H:i:s'),
                 'is_bots_stoped' => '1',
@@ -1636,7 +1636,7 @@ class WhatsAppWebhookController extends Controller
             'trigger_msg' => $triggerMsg,
             'button_id' => $buttonId,
             'ref_message_id' => $refMessageId,
-            'is_button_response' => ! empty($buttonId),
+            'is_button_response' => !empty($buttonId),
         ]);
 
         // Handle button responses
@@ -1672,12 +1672,21 @@ class WhatsAppWebhookController extends Controller
             }
         }
         // Handle new flow triggers (text messages)
-        if ($triggerMsg && ! $buttonId) {
+        if ($triggerMsg && !$buttonId) {
             whatsapp_log('Looking for new flow to trigger', 'info', [
                 'trigger_msg' => $triggerMsg,
             ]);
 
             $flows = BotFlow::where(['is_active' => 1, 'tenant_id' => $this->tenant_id])->get();
+
+            // PRIORITY SYSTEM: Check flows in order of specificity
+            // 1. Exact match (reply_type=1)
+            // 2. Contains (reply_type=2)
+            // 3. First time (reply_type=3)
+            // 4. Fallback (reply_type=4) - only if nothing else matches
+
+            $fallbackFlow = null;
+            $fallbackNode = null;
 
             foreach ($flows as $flow) {
                 $flowData = json_decode($flow->flow_data, true);
@@ -1688,16 +1697,41 @@ class WhatsAppWebhookController extends Controller
                 // Find trigger node
                 foreach ($flowData['nodes'] as $node) {
                     if ($node['type'] === 'trigger') {
-                        if ($this->isFlowMatch($node, $contactData->type, $triggerMsg)) {
-                            whatsapp_log('Found matching trigger, executing flow', 'info', [
+                        $matchResult = $this->isFlowMatchWithPriority($node, $contactData->type, $triggerMsg);
+
+                        if ($matchResult['matched']) {
+                            // If this is a fallback trigger, save it but continue checking
+                            if ($matchResult['is_fallback']) {
+                                whatsapp_log('Found fallback flow, saving for later', 'info', [
+                                    'flow_id' => $flow->id,
+                                    'trigger_node_id' => $node['id'],
+                                ]);
+                                $fallbackFlow = $flow;
+                                $fallbackNode = $node;
+                                continue; // Keep looking for specific matches
+                            }
+
+                            // This is a specific match (exact/contains/first-time) - execute immediately
+                            whatsapp_log('Found specific trigger match, executing flow', 'info', [
                                 'flow_id' => $flow->id,
                                 'trigger_node_id' => $node['id'],
+                                'match_type' => $matchResult['match_type'],
                             ]);
 
                             return $this->executeFlowFromStart($flow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
                         }
                     }
                 }
+            }
+
+            // No specific match found, use fallback if available
+            if ($fallbackFlow) {
+                whatsapp_log('No specific match, executing fallback flow', 'info', [
+                    'flow_id' => $fallbackFlow->id,
+                    'trigger_node_id' => $fallbackNode['id'],
+                ]);
+
+                return $this->executeFlowFromStart($fallbackFlow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
             }
         }
 
@@ -1711,6 +1745,16 @@ class WhatsAppWebhookController extends Controller
      */
     private function isFlowMatch($triggerNode, $relType, $trigger)
     {
+        $result = $this->isFlowMatchWithPriority($triggerNode, $relType, $trigger);
+        return $result['matched'];
+    }
+    
+    /**
+     * Check if flow matches with priority information
+     * Returns array with 'matched', 'is_fallback', and 'match_type'
+     */
+    private function isFlowMatchWithPriority($triggerNode, $relType, $trigger)
+    {
         $nodeData = $triggerNode['data'] ?? [];
         $output = $nodeData['output'] ?? [];
 
@@ -1720,7 +1764,7 @@ class WhatsAppWebhookController extends Controller
                 'trigger_id' => $triggerNode['id'] ?? 'unknown',
             ]);
 
-            return false;
+            return ['matched' => false, 'is_fallback' => false, 'match_type' => 'none'];
         }
 
         // Check each output rule
@@ -1750,7 +1794,7 @@ class WhatsAppWebhookController extends Controller
             $triggers = array_map('trim', explode(',', $rule['trigger'] ?? ''));
 
             switch ($replyType) {
-                case 1: // Exact match
+                case 1: // Exact match - HIGHEST PRIORITY
                     foreach ($triggers as $t) {
                         if (strcasecmp($trigger, $t) === 0) {
                             whatsapp_log('Exact match found', 'info', [
@@ -1758,12 +1802,12 @@ class WhatsAppWebhookController extends Controller
                                 'matched_trigger' => $t,
                             ]);
 
-                            return true;
+                            return ['matched' => true, 'is_fallback' => false, 'match_type' => 'exact'];
                         }
                     }
                     break;
 
-                case 2: // Contains
+                case 2: // Contains - HIGH PRIORITY
                     foreach ($triggers as $t) {
                         if (! empty($t) && stripos($trigger, $t) !== false) {
                             whatsapp_log('Contains match found', 'info', [
@@ -1771,23 +1815,23 @@ class WhatsAppWebhookController extends Controller
                                 'matched_trigger' => $t,
                             ]);
 
-                            return true;
+                            return ['matched' => true, 'is_fallback' => false, 'match_type' => 'contains'];
                         }
                     }
                     break;
 
-                case 3: // First time
+                case 3: // First time - MEDIUM PRIORITY
                     if ($this->is_first_time) {
-                        return true;
+                        return ['matched' => true, 'is_fallback' => false, 'match_type' => 'first_time'];
                     }
                     break;
 
-                case 4: // Fallback
+                case 4: // Fallback - LOWEST PRIORITY (matches everything)
                     whatsapp_log('Fallback trigger match', 'info', [
                         'trigger_id' => $triggerNode['id'] ?? 'unknown',
                     ]);
 
-                    return true;
+                    return ['matched' => true, 'is_fallback' => true, 'match_type' => 'fallback'];
             }
         }
 
@@ -1797,7 +1841,7 @@ class WhatsAppWebhookController extends Controller
             'rel_type' => $relType,
         ]);
 
-        return false;
+        return ['matched' => false, 'is_fallback' => false, 'match_type' => 'none'];
     }
 
     /**
@@ -1808,7 +1852,7 @@ class WhatsAppWebhookController extends Controller
         // Parse button ID to get source node
         $navigationInfo = $this->parseButtonIdForNavigation($buttonId);
 
-        if (! $navigationInfo || ! $navigationInfo['source_node_id']) {
+        if (!$navigationInfo || !$navigationInfo['source_node_id']) {
             whatsapp_log('Cannot determine source node from button ID', 'warning', [
                 'button_id' => $buttonId,
             ]);
@@ -1867,7 +1911,7 @@ class WhatsAppWebhookController extends Controller
         // Parse button/list ID to extract navigation information
         $navigationInfo = $this->parseButtonIdForNavigation($buttonId);
 
-        if (! $navigationInfo) {
+        if (!$navigationInfo) {
             whatsapp_log('Cannot parse interaction ID for navigation', 'error', [
                 'button_id' => $buttonId,
             ]);
@@ -2073,20 +2117,20 @@ class WhatsAppWebhookController extends Controller
 
                 if ($interactionType === 'button') {
                     // Match button handles: "button-0", "button-1", etc.
-                    $expectedHandle = 'button-'.$buttonIndex;
+                    $expectedHandle = 'button-' . $buttonIndex;
                     if ($sourceHandle === $expectedHandle) {
                         $isMatch = true;
                     }
                 } elseif ($interactionType === 'list') {
                     // Match list item handles: "item-0-0", "item-1-2", etc.
-                    $expectedHandle = 'item-'.$sectionIndex.'-'.$itemIndex;
+                    $expectedHandle = 'item-' . $sectionIndex . '-' . $itemIndex;
                     if ($sourceHandle === $expectedHandle) {
                         $isMatch = true;
                     }
                 }
 
                 // Fallback: if no specific handle and this is the first interaction
-                if (! $isMatch && ! $sourceHandle && ($buttonIndex === 0 || ($sectionIndex === 0 && $itemIndex === 0))) {
+                if (!$isMatch && !$sourceHandle && ($buttonIndex === 0 || ($sectionIndex === 0 && $itemIndex === 0))) {
                     whatsapp_log('Using fallback edge for first interaction', 'debug', [
                         'target' => $target,
                     ]);
@@ -2242,7 +2286,7 @@ class WhatsAppWebhookController extends Controller
                 }
 
                 // Add delay between non-interactive messages only
-                if (! $isInteractiveNode && $index < count($nodes) - 1) {
+                if (!$isInteractiveNode && $index < count($nodes) - 1) {
                     usleep(500000); // 500ms delay
                 }
             } catch (\Exception $e) {
@@ -2259,7 +2303,7 @@ class WhatsAppWebhookController extends Controller
             'total_nodes' => count($nodes),
             'successful_nodes' => $successCount,
             'stopped_at_interactive' => $stoppedAtInteractiveNode,
-            'processed_all' => ! $stoppedAtInteractiveNode && $successCount === count($nodes),
+            'processed_all' => !$stoppedAtInteractiveNode && $successCount === count($nodes),
         ]);
 
         return $successCount > 0;
@@ -2291,7 +2335,7 @@ class WhatsAppWebhookController extends Controller
             // Find nodes connected to this specific trigger
             $connectedNodes = $this->findDirectlyConnectedNodes($triggerNode['id'], $flowData);
 
-            if (! empty($connectedNodes)) {
+            if (!empty($connectedNodes)) {
                 whatsapp_log('Found connected nodes for trigger', 'debug', [
                     'trigger_id' => $triggerNode['id'],
                     'connected_count' => count($connectedNodes),
@@ -2365,8 +2409,8 @@ class WhatsAppWebhookController extends Controller
                         $buttonIndex = $matches[1];
 
                         // Create multiple mapping formats for compatibility
-                        $uniqueButtonId = $sourceNodeId.'_btn_'.$buttonIndex;
-                        $genericButtonId = 'button'.($buttonIndex + 1);
+                        $uniqueButtonId = $sourceNodeId . '_btn_' . $buttonIndex;
+                        $genericButtonId = 'button' . ($buttonIndex + 1);
 
                         $mappings[$uniqueButtonId] = $targetNodeId;
                         $mappings[$genericButtonId] = $targetNodeId;
@@ -2424,7 +2468,7 @@ class WhatsAppWebhookController extends Controller
                         $itemIndex = $matches[2];
 
                         // Create mapping format for list items
-                        $listItemId = $sourceNodeId.'_item_'.$sectionIndex.'_'.$itemIndex;
+                        $listItemId = $sourceNodeId . '_item_' . $sectionIndex . '_' . $itemIndex;
                         $mappings[$listItemId] = $targetNodeId;
 
                         whatsapp_log('Added list item mapping', 'debug', [
@@ -2456,7 +2500,7 @@ class WhatsAppWebhookController extends Controller
     {
         $nodeType = $node['type'];
         $nodeData = $node['data'] ?? [];
-        
+
         // Debug: Log full node data for AI Assistant nodes
         if ($nodeType === 'aiAssistant') {
             \Log::info('AI Assistant Node - Full Node Data', [
@@ -2488,7 +2532,7 @@ class WhatsAppWebhookController extends Controller
             if ($nodeType === 'delay') {
                 return $this->processDelayNode($node, $nodeData, $contactNumber, $phoneNumberId, $contactData, $context);
             }
-            
+
             do_action('before_send_flow_message', ['contact_number' => $contactNumber, 'node_data' => $nodeData, 'node_type' => $nodeType, 'phone_number_id' => $phoneNumberId, 'contact_data' => $contactData, 'context' => $context, 'tenant_id' => $this->tenant_id, 'tenant_subdomain' => $this->tenant_subdoamin]);
             // Use the WhatsApp trait methods directly
             $result = $this->sendFlowMessage(
@@ -2590,8 +2634,8 @@ class WhatsAppWebhookController extends Controller
             // Get message ID from WhatsApp response
             $messageId = $this->extractMessageIdFromResult($result);
 
-            if (! $messageId) {
-                $messageId = uniqid('flow_msg_'.$nodeType.'_');
+            if (!$messageId) {
+                $messageId = uniqid('flow_msg_' . $nodeType . '_');
             }
 
             // Build the HTML content for chat display using existing pattern
@@ -2666,7 +2710,7 @@ class WhatsAppWebhookController extends Controller
                 elseif (is_array($data)) {
                     if (isset($data['messages'][0]['id'])) {
                         $messageId = $data['messages'][0]['id'];
-                    } elseif (isset($data['messages']) && is_array($data['messages']) && ! empty($data['messages'])) {
+                    } elseif (isset($data['messages']) && is_array($data['messages']) && !empty($data['messages'])) {
                         $firstMessage = $data['messages'][0];
                         if (isset($firstMessage['id'])) {
                             $messageId = $firstMessage['id'];
@@ -2683,7 +2727,7 @@ class WhatsAppWebhookController extends Controller
             }
 
             // Check responseData as fallback
-            if (! $messageId && isset($result['responseData'])) {
+            if (!$messageId && isset($result['responseData'])) {
                 $responseData = $result['responseData'];
                 if (is_array($responseData) && isset($responseData['messages'][0]['id'])) {
                     $messageId = $responseData['messages'][0]['id'];
@@ -2713,7 +2757,7 @@ class WhatsAppWebhookController extends Controller
             case 'textMessage':
                 $text = $this->replaceFlowVariables($output['reply_text'] ?? '', $contactData);
 
-                return '<p>'.nl2br(decodeWhatsAppSigns(e($text))).'</p>';
+                return '<p>' . nl2br(decodeWhatsAppSigns(e($text))) . '</p>';
 
             case 'buttonMessage':
                 $text = $this->replaceFlowVariables($output['reply_text'] ?? '', $contactData);
@@ -2724,36 +2768,36 @@ class WhatsAppWebhookController extends Controller
                 $buttonHtml = "<div class='flex flex-col mt-2 space-y-2'>";
 
                 if ($button1) {
-                    $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full dark:bg-gray-800 dark:text-success-400'>".e($button1).'</button>';
+                    $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full dark:bg-gray-800 dark:text-success-400'>" . e($button1) . '</button>';
                 }
                 if ($button2) {
-                    $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full dark:bg-gray-800 dark:text-success-400'>".e($button2).'</button>';
+                    $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full dark:bg-gray-800 dark:text-success-400'>" . e($button2) . '</button>';
                 }
                 if ($button3) {
-                    $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full dark:bg-gray-800 dark:text-success-400'>".e($button3).'</button>';
+                    $buttonHtml .= "<button class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full dark:bg-gray-800 dark:text-success-400'>" . e($button3) . '</button>';
                 }
 
                 $buttonHtml .= '</div>';
 
-                return '<p>'.nl2br(decodeWhatsAppSigns(e($text))).'</p>'.$buttonHtml;
+                return '<p>' . nl2br(decodeWhatsAppSigns(e($text))) . '</p>' . $buttonHtml;
 
             case 'listMessage':
                 $text = $this->replaceFlowVariables($output['reply_text'] ?? '', $contactData);
                 $sections = $output['sections'] ?? [];
 
-                $listHtml = '<p>'.nl2br(decodeWhatsAppSigns(e($text))).'</p>';
+                $listHtml = '<p>' . nl2br(decodeWhatsAppSigns(e($text))) . '</p>';
                 $listHtml .= "<div class='bg-gray-50 rounded-lg p-3 mt-2 dark:bg-gray-800'>";
-                $listHtml .= "<div class='text-sm text-gray-600 dark:text-gray-400 mb-2'>📋 ".($output['buttonText'] ?? 'Select Option').'</div>';
+                $listHtml .= "<div class='text-sm text-gray-600 dark:text-gray-400 mb-2'>📋 " . ($output['buttonText'] ?? 'Select Option') . '</div>';
 
                 foreach ($sections as $section) {
                     $listHtml .= "<div class='mb-2'>";
-                    $listHtml .= "<div class='font-semibold text-xs text-gray-700 dark:text-gray-300'>".e($section['title'] ?? '').'</div>';
+                    $listHtml .= "<div class='font-semibold text-xs text-gray-700 dark:text-gray-300'>" . e($section['title'] ?? '') . '</div>';
 
                     foreach ($section['items'] as $item) {
                         $listHtml .= "<div class='bg-white rounded p-2 mt-1 border-l-2 border-success-500 dark:bg-gray-700'>";
-                        $listHtml .= "<div class='font-medium text-sm'>".e($item['title'] ?? '').'</div>';
-                        if (! empty($item['description'])) {
-                            $listHtml .= "<div class='text-xs text-gray-500 dark:text-gray-400'>".e($item['description']).'</div>';
+                        $listHtml .= "<div class='font-medium text-sm'>" . e($item['title'] ?? '') . '</div>';
+                        if (!empty($item['description'])) {
+                            $listHtml .= "<div class='text-xs text-gray-500 dark:text-gray-400'>" . e($item['description']) . '</div>';
                         }
                         $listHtml .= '</div>';
                     }
@@ -2773,15 +2817,15 @@ class WhatsAppWebhookController extends Controller
 
                 $ctaHtml = '';
                 if ($header) {
-                    $ctaHtml .= "<span class='font-semibold mb-1'>".nl2br(decodeWhatsAppSigns(e($header))).'</span><br>';
+                    $ctaHtml .= "<span class='font-semibold mb-1'>" . nl2br(decodeWhatsAppSigns(e($header))) . '</span><br>';
                 }
-                $ctaHtml .= '<p>'.nl2br(decodeWhatsAppSigns(e($text))).'</p>';
+                $ctaHtml .= '<p>' . nl2br(decodeWhatsAppSigns(e($text))) . '</p>';
                 if ($footer) {
-                    $ctaHtml .= "<span class='text-gray-500 dark:text-gray-400 text-xs mb-2'>".nl2br(e($footer)).'</span><br>';
+                    $ctaHtml .= "<span class='text-gray-500 dark:text-gray-400 text-xs mb-2'>" . nl2br(e($footer)) . '</span><br>';
                 }
 
                 $ctaHtml .= "<div class='mt-2'>";
-                $ctaHtml .= "<a href='".e($buttonLink)."' target='_blank' class='bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-md inline-block text-xs font-medium transition'>".e($buttonText).'</a>';
+                $ctaHtml .= "<a href='" . e($buttonLink) . "' target='_blank' class='bg-primary-600 hover:bg-primary-700 text-white px-3 py-1.5 rounded-md inline-block text-xs font-medium transition'>" . e($buttonText) . '</a>';
                 $ctaHtml .= '</div>';
 
                 return $ctaHtml;
@@ -2795,24 +2839,24 @@ class WhatsAppWebhookController extends Controller
 
                 switch ($mediaType) {
                     case 'image':
-                        $mediaHtml = "<a href='".e($mediaUrl)."' data-lightbox='image-group'>";
-                        $mediaHtml .= "<img src='".e($mediaUrl)."' class='rounded-lg w-full mb-2 max-w-sm'>";
+                        $mediaHtml = "<a href='" . e($mediaUrl) . "' data-lightbox='image-group'>";
+                        $mediaHtml .= "<img src='" . e($mediaUrl) . "' class='rounded-lg w-full mb-2 max-w-sm'>";
                         $mediaHtml .= '</a>';
                         break;
                     case 'video':
-                        $mediaHtml = "<video src='".e($mediaUrl)."' controls class='rounded-lg w-full max-w-sm'></video>";
+                        $mediaHtml = "<video src='" . e($mediaUrl) . "' controls class='rounded-lg w-full max-w-sm'></video>";
                         break;
                     case 'audio':
-                        $mediaHtml = "<audio controls class='w-64'><source src='".e($mediaUrl)."' type='audio/mpeg'></audio>";
+                        $mediaHtml = "<audio controls class='w-64'><source src='" . e($mediaUrl) . "' type='audio/mpeg'></audio>";
                         break;
                     case 'document':
                         $filename = $output['media_filename'] ?? basename($mediaUrl);
-                        $mediaHtml = "<a href='".e($mediaUrl)."' target='_blank' class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full dark:bg-gray-800 dark:text-success-400'>📄 ".e($filename).'</a>';
+                        $mediaHtml = "<a href='" . e($mediaUrl) . "' target='_blank' class='bg-gray-100 text-success-500 px-3 py-2 rounded-lg flex items-center justify-center text-xs space-x-2 w-full dark:bg-gray-800 dark:text-success-400'>📄 " . e($filename) . '</a>';
                         break;
                 }
 
                 if ($caption) {
-                    $mediaHtml .= "<p class='mt-2'>".nl2br(decodeWhatsAppSigns(e($caption))).'</p>';
+                    $mediaHtml .= "<p class='mt-2'>" . nl2br(decodeWhatsAppSigns(e($caption))) . '</p>';
                 }
 
                 return $mediaHtml;
@@ -2827,16 +2871,16 @@ class WhatsAppWebhookController extends Controller
                 $locationHtml .= "<div class='flex items-center mb-2'>";
                 $locationHtml .= "<span class='text-lg mr-2'>📍</span>";
                 $locationHtml .= '<div>';
-                $locationHtml .= "<div class='font-semibold'>".e($name).'</div>';
+                $locationHtml .= "<div class='font-semibold'>" . e($name) . '</div>';
                 if ($address) {
-                    $locationHtml .= "<div class='text-sm text-gray-600 dark:text-gray-400'>".e($address).'</div>';
+                    $locationHtml .= "<div class='text-sm text-gray-600 dark:text-gray-400'>" . e($address) . '</div>';
                 }
                 $locationHtml .= '</div>';
                 $locationHtml .= '</div>';
 
                 if ($latitude && $longitude) {
-                    $mapUrl = 'https://www.google.com/maps?q='.urlencode($latitude.','.$longitude);
-                    $locationHtml .= "<a href='".$mapUrl."' target='_blank' class='text-info-500 text-sm hover:underline'>View on Map</a>";
+                    $mapUrl = 'https://www.google.com/maps?q=' . urlencode($latitude . ',' . $longitude);
+                    $locationHtml .= "<a href='" . $mapUrl . "' target='_blank' class='text-info-500 text-sm hover:underline'>View on Map</a>";
                 }
 
                 $locationHtml .= '</div>';
@@ -2847,19 +2891,19 @@ class WhatsAppWebhookController extends Controller
                 $contacts = $output['contacts'] ?? [];
 
                 $contactHtml = "<div class='bg-gray-50 rounded-lg p-3 dark:bg-gray-800'>";
-                $contactHtml .= "<div class='text-sm text-gray-600 dark:text-gray-400 mb-3 font-medium flex items-center gap-1'>👤 Contact".(count($contacts) > 1 ? 's' : '').'</div>';
+                $contactHtml .= "<div class='text-sm text-gray-600 dark:text-gray-400 mb-3 font-medium flex items-center gap-1'>👤 Contact" . (count($contacts) > 1 ? 's' : '') . '</div>';
 
                 foreach ($contacts as $contact) {
                     $contactHtml .= "<div class='bg-white dark:bg-gray-700 rounded-lg p-3 space-y-1.5'>";
-                    $contactHtml .= "<div class='text-base font-semibold text-gray-800 dark:text-gray-100'>".e(($contact['firstName'] ?? '').' '.($contact['lastName'] ?? '')).'</div>';
-                    if (! empty($contact['phone'])) {
-                        $contactHtml .= "<div class='text-sm text-gray-600 dark:text-gray-300'>📞 ".e($contact['phone']).'</div>';
+                    $contactHtml .= "<div class='text-base font-semibold text-gray-800 dark:text-gray-100'>" . e(($contact['firstName'] ?? '') . ' ' . ($contact['lastName'] ?? '')) . '</div>';
+                    if (!empty($contact['phone'])) {
+                        $contactHtml .= "<div class='text-sm text-gray-600 dark:text-gray-300'>📞 " . e($contact['phone']) . '</div>';
                     }
-                    if (! empty($contact['email'])) {
-                        $contactHtml .= "<div class='text-sm text-gray-600 dark:text-gray-300'>✉️ ".e($contact['email']).'</div>';
+                    if (!empty($contact['email'])) {
+                        $contactHtml .= "<div class='text-sm text-gray-600 dark:text-gray-300'>✉️ " . e($contact['email']) . '</div>';
                     }
-                    if (! empty($contact['company'])) {
-                        $contactHtml .= "<div class='text-sm text-gray-600 dark:text-gray-300'>🏢 ".e($contact['company']).'</div>';
+                    if (!empty($contact['company'])) {
+                        $contactHtml .= "<div class='text-sm text-gray-600 dark:text-gray-300'>🏢 " . e($contact['company']) . '</div>';
                     }
                     $contactHtml .= '</div>';
                 }
@@ -2869,7 +2913,7 @@ class WhatsAppWebhookController extends Controller
                 return $contactHtml;
 
             default:
-                return '<p>Flow message: '.e($nodeType).'</p>';
+                return '<p>Flow message: ' . e($nodeType) . '</p>';
         }
     }
 
@@ -2885,7 +2929,7 @@ class WhatsAppWebhookController extends Controller
                 $text = $this->replaceFlowVariables($output['reply_text'] ?? '', $contactData);
                 $buttons = array_filter([$output['button1'] ?? '', $output['button2'] ?? '', $output['button3'] ?? '']);
 
-                return $text.(count($buttons) > 0 ? ' ['.count($buttons).' buttons]' : '');
+                return $text . (count($buttons) > 0 ? ' [' . count($buttons) . ' buttons]' : '');
 
             case 'listMessage':
                 $text = $this->replaceFlowVariables($output['reply_text'] ?? '', $contactData);
@@ -2894,16 +2938,16 @@ class WhatsAppWebhookController extends Controller
                     return count($section['items'] ?? []);
                 }, $sections));
 
-                return $text.' [List with '.$totalItems.' options]';
+                return $text . ' [List with ' . $totalItems . ' options]';
 
             case 'callToAction':
-                return $this->replaceFlowVariables($output['reply_text'] ?? '', $contactData).' [CTA Button]';
+                return $this->replaceFlowVariables($output['reply_text'] ?? '', $contactData) . ' [CTA Button]';
 
             case 'mediaMessage':
                 $caption = $this->replaceFlowVariables($output['media_caption'] ?? '', $contactData);
                 $mediaType = $output['media_type'] ?? 'media';
 
-                return $caption ?: '['.ucfirst($mediaType).' message]';
+                return $caption ?: '[' . ucfirst($mediaType) . ' message]';
 
             case 'locationMessage':
                 return $output['location_name'] ?? 'Location shared';
@@ -2911,7 +2955,7 @@ class WhatsAppWebhookController extends Controller
             case 'contactMessage':
                 $contacts = $output['contacts'] ?? [];
 
-                return 'Contact'.(count($contacts) > 1 ? 's' : '').' shared ('.count($contacts).')';
+                return 'Contact' . (count($contacts) > 1 ? 's' : '') . ' shared (' . count($contacts) . ')';
 
             default:
                 return 'Flow message';
@@ -2974,7 +3018,7 @@ class WhatsAppWebhookController extends Controller
         try {
             // Only trigger if Pusher is configured (same check as existing code)
             if (
-                ! empty($this->pusher_settings['app_key']) && ! empty($this->pusher_settings['app_secret']) && ! empty($this->pusher_settings['app_id']) && ! empty($this->pusher_settings['cluster'])
+                !empty($this->pusher_settings['app_key']) && !empty($this->pusher_settings['app_secret']) && !empty($this->pusher_settings['app_id']) && !empty($this->pusher_settings['cluster'])
             ) {
                 $pusherService = new PusherService($this->tenant_id);
                 $chatData = ManageChat::newChatMessage($chatId, $messageDbId, $this->tenant_id);
@@ -3014,7 +3058,7 @@ class WhatsAppWebhookController extends Controller
 
             // Only trigger if Pusher is configured
             if (
-                ! empty($pusherSettings['app_key']) && ! empty($pusherSettings['app_secret']) && ! empty($pusherSettings['app_id']) && ! empty($pusherSettings['cluster'])
+                !empty($pusherSettings['app_key']) && !empty($pusherSettings['app_secret']) && !empty($pusherSettings['app_id']) && !empty($pusherSettings['cluster'])
             ) {
                 $pusherService = new PusherService($tenantId);
                 $chatData = ManageChat::newChatMessage($chatId, $messageDbId, $tenantId);
@@ -3056,7 +3100,7 @@ class WhatsAppWebhookController extends Controller
      */
     protected function isTemplateWebhook(array $payload)
     {
-        if (! isset($payload['entry'][0]['changes'][0])) {
+        if (!isset($payload['entry'][0]['changes'][0])) {
             return false;
         }
 
@@ -3284,10 +3328,10 @@ class WhatsAppWebhookController extends Controller
         try {
             $delayType = $nodeData['delayType'] ?? 'fixed';
             $showTyping = $nodeData['showTyping'] ?? true;
-            
+
             // Calculate delay in seconds
             $delaySeconds = $this->calculateDelaySeconds($nodeData);
-            
+
             whatsapp_log('Processing delay node - starting', 'info', [
                 'node_id' => $node['id'],
                 'delay_type' => $delayType,
@@ -3310,7 +3354,7 @@ class WhatsAppWebhookController extends Controller
                     'delay_seconds' => $delaySeconds,
                     'delay_microseconds' => $delayMicroseconds,
                 ]);
-                
+
                 usleep($delayMicroseconds);
             }
 
@@ -3339,31 +3383,31 @@ class WhatsAppWebhookController extends Controller
     protected function calculateDelaySeconds($nodeData)
     {
         $delayType = $nodeData['delayType'] ?? 'fixed';
-        
+
         switch ($delayType) {
             case 'fixed':
                 $duration = $nodeData['duration'] ?? 3;
                 $unit = $nodeData['unit'] ?? 'seconds';
                 return $this->convertToSeconds($duration, $unit);
-                
+
             case 'random':
                 $minDuration = $nodeData['minDuration'] ?? 1;
                 $maxDuration = $nodeData['maxDuration'] ?? 5;
                 $unit = $nodeData['unit'] ?? 'seconds';
                 $randomDuration = rand($minDuration, $maxDuration);
                 return $this->convertToSeconds($randomDuration, $unit);
-                
+
             case 'typing':
                 $messageLength = $nodeData['messageLength'] ?? 100;
                 $typingSpeed = $nodeData['typingSpeed'] ?? 'normal';
                 $wpm = $typingSpeed === 'slow' ? 40 : ($typingSpeed === 'fast' ? 80 : 60);
                 return max(1, ceil(($messageLength / 5) / ($wpm / 60)));
-                
+
             case 'scheduled':
                 // For scheduled delays, return a smaller delay for immediate processing
                 // Real scheduling would need a queue system
                 return 5; // 5 seconds placeholder
-                
+
             default:
                 return 3;
         }
@@ -3395,7 +3439,7 @@ class WhatsAppWebhookController extends Controller
         try {
             // Send typing indicator
             $this->setWaTenantId($this->tenant_id)->sendTypingIndicator($contactNumber, $phoneNumberId);
-            
+
             whatsapp_log('Typing indicator sent', 'debug', [
                 'contact_number' => $contactNumber,
                 'phone_number_id' => $phoneNumberId,
