@@ -36,164 +36,6 @@
                     </x-slot:header>
                     <x-slot:content>
                         @if($embedded_signup_configured)
-                        {{-- Define function inline before button --}}
-                        <script>
-                            console.log('[Embedded Signup] Inline script loaded');
-                            // Define function immediately in global scope
-                            window.handleFacebookEmbeddedSignup = function(e) {
-                                console.log('[Embedded Signup] handleFacebookEmbeddedSignup called');
-                                if (e) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                }
-                                
-                                const btn = document.getElementById('fb-embedded-signup-btn');
-                                if (!btn) {
-                                    console.error('[Embedded Signup] Button not found!');
-                                    return;
-                                }
-                                
-                                console.log('[Embedded Signup] Button found, proceeding...');
-                                
-                                // Show loading state
-                                const originalText = btn.innerHTML;
-                                btn.disabled = true;
-                                btn.innerHTML = '<span class="flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>{{ t("opening_facebook_window") }}</span>';
-
-                                // Get redirect URI and config ID
-                                // IMPORTANT: Redirect URI must match EXACTLY what's whitelisted in Facebook App settings
-                                // Do NOT include popup=1 in the redirect_uri sent to Facebook
-                                const redirectUri = '{{ tenant_route("tenant.connect", ["state" => "embedded_signup"]) }}';
-                                const configId = '{{ $admin_fb_config_id }}';
-                                const apiVersion = '{{ get_setting("whatsapp.api_version", "v21.0") }}';
-                                const clientId = '{{ $admin_fb_app_id }}';
-                                
-                                console.log('[Embedded Signup] ===== CONFIGURATION BEING SENT TO FACEBOOK =====');
-                                console.log('[Embedded Signup] Facebook App ID (client_id):', clientId);
-                                console.log('[Embedded Signup] Facebook Config ID (config_id):', configId);
-                                console.log('[Embedded Signup] API Version:', apiVersion);
-                                console.log('[Embedded Signup] Redirect URI (must be whitelisted in FB App):', redirectUri);
-                                console.log('[Embedded Signup] Encoded Redirect URI:', encodeURIComponent(redirectUri));
-                                console.log('[Embedded Signup] ===========================================');
-
-                                // Build OAuth URL - redirect_uri must match exactly what's in Facebook App settings
-                                const oauthUrl = 'https://www.facebook.com/' + apiVersion + '/dialog/oauth?' +
-                                    'client_id=' + clientId + '&' +
-                                    'config_id=' + configId + '&' +
-                                    'redirect_uri=' + encodeURIComponent(redirectUri) + '&' +
-                                    'response_type=code&' +
-                                    'scope=whatsapp_business_management,business_management&' +
-                                    'state=embedded_signup';
-                                
-                                console.log('[Embedded Signup] ===== COMPLETE OAUTH URL =====');
-                                console.log('[Embedded Signup] OAuth URL:', oauthUrl);
-                                console.log('[Embedded Signup] ===========================================');
-                                console.log('[Embedded Signup] ⚠️  IMPORTANT: Add this redirect URI to Facebook App OAuth settings:');
-                                console.log('[Embedded Signup] Redirect URI to whitelist:', redirectUri);
-
-                                // Open Facebook Embedded Signup popup using OAuth dialog
-                                const popup = window.open(
-                                    oauthUrl,
-                                    'Facebook Login',
-                                    'width=600,height=700,scrollbars=yes,resizable=yes,left=' + (screen.width/2 - 300) + ',top=' + (screen.height/2 - 350)
-                                );
-
-                                console.log('[Embedded Signup] Popup opened:', !!popup);
-                                console.log('[Embedded Signup] Popup closed status:', popup ? popup.closed : 'popup is null');
-
-                                // Check if popup was blocked
-                                if (!popup || popup.closed || typeof popup.closed == 'undefined') {
-                                    console.error('[Embedded Signup] Popup was blocked or failed to open');
-                                    btn.disabled = false;
-                                    btn.innerHTML = originalText;
-                                    if (typeof showNotification !== 'undefined') {
-                                        showNotification('{{ t("connection_failed") }}: Popup blocked. Please allow popups for this site.', 'danger');
-                                    }
-                                    return;
-                                }
-
-                                console.log('[Embedded Signup] Setting up message listener');
-
-                                // Listen for message from popup callback page
-                                const messageHandler = function(event) {
-                                    console.log('[Embedded Signup] Message received:', event);
-                                    console.log('[Embedded Signup] Message origin:', event.origin);
-                                    console.log('[Embedded Signup] Window origin:', window.location.origin);
-                                    
-                                    // Verify origin for security
-                                    if (event.origin !== window.location.origin) {
-                                        console.warn('[Embedded Signup] Origin mismatch, ignoring message');
-                                        return;
-                                    }
-                                    
-                                    if (event.data && event.data.type === 'facebook_embedded_signup_callback') {
-                                        console.log('[Embedded Signup] Valid callback message received:', event.data);
-                                        clearInterval(checkPopup);
-                                        window.removeEventListener('message', messageHandler);
-                                        
-                                        if (event.data.code) {
-                                            console.log('[Embedded Signup] Authorization code received:', event.data.code);
-                                            // Close popup
-                                            if (popup && !popup.closed) {
-                                                popup.close();
-                                                console.log('[Embedded Signup] Popup closed');
-                                            }
-                                            
-                                            // Call Livewire method to handle the callback
-                                            console.log('[Embedded Signup] Calling Livewire method...');
-                                            @this.call('handleEmbeddedSignupCallback', event.data.code)
-                                                .then((result) => {
-                                                    console.log('[Embedded Signup] Livewire method success:', result);
-                                                    btn.disabled = false;
-                                                    btn.innerHTML = originalText;
-                                                    // Reload page to show updated state
-                                                    console.log('[Embedded Signup] Reloading page...');
-                                                    window.location.reload();
-                                                })
-                                                .catch((error) => {
-                                                    console.error('[Embedded Signup] Livewire method error:', error);
-                                                    btn.disabled = false;
-                                                    btn.innerHTML = originalText;
-                                                    if (typeof showNotification !== 'undefined') {
-                                                        showNotification('{{ t("connection_failed") }}', 'danger');
-                                                    }
-                                                });
-                                        } else if (event.data.error) {
-                                            console.error('[Embedded Signup] Error received:', event.data.error, event.data.error_description);
-                                            // Handle error
-                                            if (popup && !popup.closed) {
-                                                popup.close();
-                                            }
-                                            btn.disabled = false;
-                                            btn.innerHTML = originalText;
-                                            if (typeof showNotification !== 'undefined') {
-                                                showNotification('{{ t("connection_failed") }}: ' + (event.data.error_description || event.data.error), 'danger');
-                                            }
-                                        }
-                                    } else {
-                                        console.log('[Embedded Signup] Message received but not a callback message:', event.data);
-                                    }
-                                };
-                                
-                                window.addEventListener('message', messageHandler);
-                                console.log('[Embedded Signup] Message listener added');
-
-                                // Monitor popup for manual close
-                                const checkPopup = setInterval(function() {
-                                    if (popup.closed) {
-                                        console.log('[Embedded Signup] Popup was closed manually');
-                                        clearInterval(checkPopup);
-                                        window.removeEventListener('message', messageHandler);
-                                        btn.disabled = false;
-                                        btn.innerHTML = originalText;
-                                    }
-                                }, 500);
-                                
-                                console.log('[Embedded Signup] Popup monitor started');
-                            };
-                            console.log('[Embedded Signup] Function defined in window scope');
-                        </script>
-                        
                         {{-- Embedded Signup Option --}}
                         <div class="mb-6 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
                             <div class="flex items-start space-x-3">
@@ -207,39 +49,7 @@
                                     <p class="text-xs text-primary-700 dark:text-primary-300 mb-3">
                                         {{ t('emb_signup_info') }}
                                     </p>
-                                    <button type="button" 
-                                            id="fb-embedded-signup-btn"
-                                            class="inline-flex items-center justify-center px-4 py-2 bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium rounded-lg transition-colors duration-200 w-full cursor-pointer">
-                                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                                        </svg>
-                                        {{ t('connect_with_facebook') }}
-                                    </button>
-                                    <script>
-                                        // Attach event listener immediately after button is created
-                                        (function() {
-                                            const btn = document.getElementById('fb-embedded-signup-btn');
-                                            if (btn) {
-                                                console.log('[Embedded Signup] Button found immediately, attaching listener');
-                                                btn.addEventListener('click', function(e) {
-                                                    console.log('[Embedded Signup] Button clicked!');
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    
-                                                    if (typeof window.handleFacebookEmbeddedSignup === 'function') {
-                                                        console.log('[Embedded Signup] Function exists, calling it');
-                                                        window.handleFacebookEmbeddedSignup(e);
-                                                    } else {
-                                                        console.error('[Embedded Signup] Function not found! Available functions:', Object.keys(window).filter(k => k.includes('Facebook')));
-                                                        alert('Function not loaded. Please refresh the page.');
-                                                    }
-                                                });
-                                                console.log('[Embedded Signup] Event listener attached immediately');
-                                            } else {
-                                                console.error('[Embedded Signup] Button not found immediately');
-                                            }
-                                        })();
-                                    </script>
+                                    <div id="fb-embedded-signup" class="w-full"></div>
                                 </div>
                             </div>
                         </div>
@@ -640,30 +450,91 @@
 
 @if($embedded_signup_configured)
 @push('scripts')
+<script>
+    // Facebook Embedded Signup SDK
+    (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+
+    window.fbAsyncInit = function() {
+        FB.init({
+            appId: '{{ $admin_fb_app_id }}',
+            cookie: true,
+            xfbml: true,
+            version: 'v18.0'
+        });
+
+        // Initialize Embedded Signup
+        FB.Event.subscribe('embedded_signup', function(response) {
+            if (response && response.authResponse) {
+                // Get access token
+                const accessToken = response.authResponse.accessToken;
+                
+                // Get business account ID from the response
+                // The embedded signup returns the business account ID in the response
+                FB.api('/me', { fields: 'id' }, function(response) {
+                    if (response && response.id) {
+                        // For WhatsApp Business API, we need to get the business account ID
+                        // This is typically done via the Graph API
+                        FB.api('/me/businesses', function(businessResponse) {
+                            if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
+                                const businessAccountId = businessResponse.data[0].id;
+                                
+                                // Call Livewire method to save the data
+                                @this.handleEmbeddedSignup(accessToken, businessAccountId);
+                            } else {
+                                // Fallback: try to get from WhatsApp Business Account
+                                FB.api('/me?fields=whatsapp_business_accounts', function(waResponse) {
+                                    if (waResponse && waResponse.whatsapp_business_accounts && waResponse.whatsapp_business_accounts.data) {
+                                        const businessAccountId = waResponse.whatsapp_business_accounts.data[0].id;
+                                        @this.handleEmbeddedSignup(accessToken, businessAccountId);
+                                    } else {
+                                        console.error('Could not retrieve business account ID');
+                                        showNotification('{{ t("connection_failed") }}', 'danger');
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    };
+
+    // Render Embedded Signup when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof FB !== 'undefined') {
+            FB.XFBML.parse();
+        } else {
+            // Wait for SDK to load
+            window.addEventListener('fb-sdk-loaded', function() {
+                FB.XFBML.parse();
+            });
+        }
+    });
+</script>
+
+{{-- Facebook Embedded Signup Widget --}}
 <div id="fb-root"></div>
 <script>
-    // Attach event listener when DOM is ready (function already defined inline above)
+    // Render the embedded signup widget
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('[Embedded Signup] DOM Content Loaded - attaching event listener');
-        
-        const fbEmbeddedSignupBtn = document.getElementById('fb-embedded-signup-btn');
-        console.log('[Embedded Signup] Button found in DOMContentLoaded:', !!fbEmbeddedSignupBtn);
-        
-        if (fbEmbeddedSignupBtn) {
-            console.log('[Embedded Signup] Attaching click event listener to button');
-            fbEmbeddedSignupBtn.addEventListener('click', function(e) {
-                console.log('[Embedded Signup] Button clicked via event listener!');
-                e.preventDefault();
-                e.stopPropagation();
-                if (typeof window.handleFacebookEmbeddedSignup === 'function') {
-                    window.handleFacebookEmbeddedSignup(e);
-                } else {
-                    console.error('[Embedded Signup] handleFacebookEmbeddedSignup function not found!');
-                }
-            });
-            console.log('[Embedded Signup] Event listener attached to button');
-        } else {
-            console.error('[Embedded Signup] Button not found! ID: fb-embedded-signup-btn');
+        if (typeof FB !== 'undefined' && FB.XFBML) {
+            const container = document.getElementById('fb-embedded-signup');
+            if (container) {
+                container.innerHTML = `
+                    <div class="fb-embedded-signup" 
+                         data-config-id="{{ $admin_fb_config_id }}"
+                         data-redirect-uri="{{ tenant_route('tenant.connect') }}"
+                         data-width="100%">
+                    </div>
+                `;
+                FB.XFBML.parse(container);
+            }
         }
     });
 </script>

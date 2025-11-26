@@ -67,37 +67,6 @@ class ConnectWaba extends Component
         $this->admin_fb_app_secret = $admin_settings->wm_fb_app_secret ?? '';
         $this->admin_fb_config_id = $admin_settings->wm_fb_config_id ?? '';
 
-        // Handle embedded signup callback
-        if (request()->has('code') && request()->has('state') && request()->get('state') === 'embedded_signup') {
-            // Check if opened in popup (has opener)
-            if (request()->hasHeader('Referer') || request()->get('popup') === '1') {
-                // This will be handled by the popup callback view
-                session()->put('embedded_signup_code', request()->get('code'));
-                session()->put('embedded_signup_popup', true);
-            } else {
-                // Regular page load - handle normally
-                $this->handleEmbeddedSignupCallback(request()->get('code'));
-            }
-        }
-        
-        // Handle embedded signup errors
-        if (request()->has('error') && request()->has('state') && request()->get('state') === 'embedded_signup') {
-            $error = request()->get('error');
-            $errorDescription = request()->get('error_description', 'Unknown error occurred');
-            
-            // Check if in popup
-            if (request()->hasHeader('Referer') || request()->get('popup') === '1') {
-                session()->put('embedded_signup_error', $error);
-                session()->put('embedded_signup_error_description', $errorDescription);
-                session()->put('embedded_signup_popup', true);
-            } else {
-                $this->notify([
-                    'message' => t('connection_failed').': '.$errorDescription,
-                    'type' => 'danger',
-                ]);
-            }
-        }
-
         // Check if account is already connected
         $this->account_connected = $this->is_whatsmark_connected == 1;
         $webhook_configuration_url = '';
@@ -256,103 +225,11 @@ class ConnectWaba extends Component
     }
 
     /**
-     * Handle embedded signup from popup (direct access token)
-     * This method receives access token and business account ID directly from Facebook SDK
-     */
-    public function handleEmbeddedSignupFromPopup($accessToken, $businessAccountId)
-    {
-        try {
-            // Validate the received data
-            if (empty($accessToken) || empty($businessAccountId)) {
-                $this->notify([
-                    'message' => t('embedded_signup_not_configured'),
-                    'type' => 'danger',
-                ]);
-                return;
-            }
-
-            // Check for duplicates (same as manual connection)
-            $is_found_wm_business_account_id = TenantSetting::where('key', 'wm_business_account_id')
-                ->where('value', 'like', "%$businessAccountId%")
-                ->where('tenant_id', '!=', tenant_id())
-                ->exists();
-            $is_found_wm_access_token = TenantSetting::where('key', 'wm_access_token')
-                ->where('value', 'like', "%$accessToken%")
-                ->where('tenant_id', '!=', tenant_id())
-                ->exists();
-
-            if ($is_found_wm_business_account_id || $is_found_wm_access_token) {
-                $this->notify([
-                    'message' => t('you_cant_use_this_details_already_used_by_other'),
-                    'type' => 'danger',
-                ]);
-                return;
-            }
-
-            // Save the account details - SAME AS MANUAL CONNECTION
-            save_tenant_setting('whatsapp', 'wm_business_account_id', $businessAccountId);
-            save_tenant_setting('whatsapp', 'wm_access_token', $accessToken);
-
-            // Set account as connected
-            $this->account_connected = true;
-            $this->wm_business_account_id = $businessAccountId;
-            $this->wm_access_token = $accessToken;
-
-            // If admin webhook is connected, verify connection and complete setup
-            if ($this->admin_webhook_connected) {
-                save_tenant_setting('whatsapp', 'is_webhook_connected', 1);
-                $this->is_webhook_connected = 1;
-
-                // Verify connection and complete setup
-                $response = $this->loadTemplatesFromWhatsApp();
-                save_tenant_setting('whatsapp', 'is_whatsmark_connected', $response['status'] ? 1 : 0);
-                save_tenant_setting('whatsapp', 'wm_fb_app_id', $this->admin_fb_app_id);
-                save_tenant_setting('whatsapp', 'wm_fb_app_secret', $this->admin_fb_app_secret);
-
-                if ($response['status']) {
-                    $this->is_whatsmark_connected = 1;
-                    $this->notify([
-                        'message' => t('whatsapp_connected_successfully'),
-                        'type' => 'success',
-                    ], true);
-
-                    return redirect()->to(tenant_route('tenant.waba'));
-                } else {
-                    $this->notify([
-                        'message' => $response['message'],
-                        'type' => 'danger',
-                    ]);
-                }
-            } else {
-                // Move to webhook setup
-                save_tenant_setting('whatsapp', 'is_webhook_connected', 0);
-                save_tenant_setting('whatsapp', 'is_whatsmark_connected', 0);
-                $this->is_webhook_connected = 0;
-                $this->is_whatsmark_connected = 0;
-                $this->step = 2;
-
-                $this->notify([
-                    'message' => t('account_details_saved').' '.t('now_setup_webhook'),
-                    'type' => 'success',
-                ]);
-            }
-        } catch (\Exception $e) {
-            whatsapp_log('Embedded Signup Connection Failed', 'error', [
-                'error' => $e->getMessage(),
-            ], $e);
-            $this->notify([
-                'message' => t('connection_failed').': '.$e->getMessage(),
-                'type' => 'danger',
-            ]);
-        }
-    }
-
-    /**
-     * Handle embedded signup callback from Facebook OAuth redirect
+     * Handle embedded signup callback from Facebook
      * This method receives the authorization code from Facebook's embedded signup
      * and exchanges it for an access token, then gets the business account ID
      */
-    public function handleEmbeddedSignupCallback($authCode)
+    public function handleEmbeddedSignup($authCode)
     {
         try {
             // Validate the received data
@@ -372,30 +249,11 @@ class ConnectWaba extends Component
                 return;
             }
 
-            // Get API version from settings
-            $apiVersion = get_setting('whatsapp.api_version', 'v21.0');
-            // Remove 'v' prefix if present for consistency
-            $apiVersion = str_replace('v', '', $apiVersion);
-            $apiVersion = 'v' . $apiVersion;
-            
-            // Build redirect URI (must match exactly what's configured in Facebook App)
-            // Note: For embedded signup, the redirect URI should NOT include popup=1 in the token exchange
-            $redirectUri = tenant_route('tenant.connect', ['state' => 'embedded_signup']);
-            
-            // Log the configuration being used
-            whatsapp_log('Embedded Signup Token Exchange', 'info', [
-                'client_id' => $this->admin_fb_app_id,
-                'config_id' => $this->admin_fb_config_id,
-                'redirect_uri' => $redirectUri,
-                'api_version' => $apiVersion,
-                'has_code' => !empty($authCode),
-            ]);
-            
             // Exchange authorization code for access token
-            $tokenResponse = \Illuminate\Support\Facades\Http::asForm()->post("https://graph.facebook.com/{$apiVersion}/oauth/access_token", [
+            $tokenResponse = \Illuminate\Support\Facades\Http::asForm()->post('https://graph.facebook.com/v18.0/oauth/access_token', [
                 'client_id' => $this->admin_fb_app_id,
                 'client_secret' => $this->admin_fb_app_secret,
-                'redirect_uri' => $redirectUri,
+                'redirect_uri' => tenant_route('tenant.connect'),
                 'code' => $authCode,
             ]);
 
@@ -420,41 +278,29 @@ class ConnectWaba extends Component
             }
 
             // Get business account ID from the access token
-            // First try to get WhatsApp Business Account directly
-            $waResponse = \Illuminate\Support\Facades\Http::get("https://graph.facebook.com/{$apiVersion}/me", [
+            $accountResponse = \Illuminate\Support\Facades\Http::get('https://graph.facebook.com/v18.0/me/businesses', [
                 'access_token' => $accessToken,
-                'fields' => 'whatsapp_business_accounts',
             ]);
 
             $businessAccountId = null;
-            if ($waResponse->successful()) {
-                $waData = $waResponse->json();
-                if (isset($waData['whatsapp_business_accounts']['data']) && count($waData['whatsapp_business_accounts']['data']) > 0) {
-                    $businessAccountId = $waData['whatsapp_business_accounts']['data'][0]['id'];
+            if ($accountResponse->successful()) {
+                $accountData = $accountResponse->json();
+                if (isset($accountData['data']) && count($accountData['data']) > 0) {
+                    $businessAccountId = $accountData['data'][0]['id'];
                 }
             }
 
-            // If WhatsApp Business Account not found, try businesses endpoint
+            // If business account not found, try to get from WhatsApp Business Account
             if (empty($businessAccountId)) {
-                $accountResponse = \Illuminate\Support\Facades\Http::get("https://graph.facebook.com/{$apiVersion}/me/businesses", [
+                $waResponse = \Illuminate\Support\Facades\Http::get('https://graph.facebook.com/v18.0/me', [
                     'access_token' => $accessToken,
+                    'fields' => 'whatsapp_business_accounts',
                 ]);
 
-                if ($accountResponse->successful()) {
-                    $accountData = $accountResponse->json();
-                    if (isset($accountData['data']) && count($accountData['data']) > 0) {
-                        // Get the first business and then get its WhatsApp Business Account
-                        $businessId = $accountData['data'][0]['id'];
-                        $wabaResponse = \Illuminate\Support\Facades\Http::get("https://graph.facebook.com/{$apiVersion}/{$businessId}/owned_whatsapp_business_accounts", [
-                            'access_token' => $accessToken,
-                        ]);
-                        
-                        if ($wabaResponse->successful()) {
-                            $wabaData = $wabaResponse->json();
-                            if (isset($wabaData['data']) && count($wabaData['data']) > 0) {
-                                $businessAccountId = $wabaData['data'][0]['id'];
-                            }
-                        }
+                if ($waResponse->successful()) {
+                    $waData = $waResponse->json();
+                    if (isset($waData['whatsapp_business_accounts']['data']) && count($waData['whatsapp_business_accounts']['data']) > 0) {
+                        $businessAccountId = $waData['whatsapp_business_accounts']['data'][0]['id'];
                     }
                 }
             }
@@ -563,29 +409,6 @@ class ConnectWaba extends Component
     {
         // Check if embedded signup is configured
         $embedded_signup_configured = !empty($this->admin_fb_app_id) && !empty($this->admin_fb_config_id);
-
-        // Handle popup callback - send message to parent window
-        if (session()->get('embedded_signup_popup')) {
-            $code = session()->get('embedded_signup_code');
-            $error = session()->get('embedded_signup_error');
-            $errorDescription = session()->get('embedded_signup_error_description');
-            
-            session()->forget(['embedded_signup_popup', 'embedded_signup_code', 'embedded_signup_error', 'embedded_signup_error_description']);
-            
-            if ($code) {
-                // Return view that sends message to parent
-                return view('livewire.tenant.waba.embedded-signup-callback', [
-                    'code' => $code,
-                    'error' => null,
-                ]);
-            } elseif ($error) {
-                return view('livewire.tenant.waba.embedded-signup-callback', [
-                    'code' => null,
-                    'error' => $error,
-                    'error_description' => $errorDescription,
-                ]);
-            }
-        }
 
         return view('livewire.tenant.waba.connect-waba', [
             'wm_default_phone_number' => $this->account_connected ?
