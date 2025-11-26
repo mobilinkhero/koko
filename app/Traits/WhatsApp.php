@@ -2229,6 +2229,9 @@ trait WhatsApp
             'response_preview' => substr($aiResponse, 0, 100) . '...',
         ]);
 
+        // Store AI response in context for chat history display
+        $context['ai_response'] = $aiResponse;
+
         $messageData = [
             'rel_type' => $contactData->type ?? 'guest',
             'rel_id' => $contactData->id ?? '',
@@ -2405,6 +2408,9 @@ trait WhatsApp
 
                 // Log AI response to flow debug
                 $aiResponseText = $aiResult['message'] ?? '';
+
+                // Store AI response in context for chat history display
+                $context['ai_response'] = $aiResponseText;
 
                 $this->logFlowDebug('AI Assistant - AI Response Received', [
                     'status' => ($aiResult['status'] ?? false) ? 'SUCCESS' : 'FAILED',
