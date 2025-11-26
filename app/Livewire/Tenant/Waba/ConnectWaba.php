@@ -379,7 +379,17 @@ class ConnectWaba extends Component
             $apiVersion = 'v' . $apiVersion;
             
             // Build redirect URI (must match exactly what's configured in Facebook App)
+            // Note: For embedded signup, the redirect URI should NOT include popup=1 in the token exchange
             $redirectUri = tenant_route('tenant.connect', ['state' => 'embedded_signup']);
+            
+            // Log the configuration being used
+            whatsapp_log('Embedded Signup Token Exchange', 'info', [
+                'client_id' => $this->admin_fb_app_id,
+                'config_id' => $this->admin_fb_config_id,
+                'redirect_uri' => $redirectUri,
+                'api_version' => $apiVersion,
+                'has_code' => !empty($authCode),
+            ]);
             
             // Exchange authorization code for access token
             $tokenResponse = \Illuminate\Support\Facades\Http::asForm()->post("https://graph.facebook.com/{$apiVersion}/oauth/access_token", [

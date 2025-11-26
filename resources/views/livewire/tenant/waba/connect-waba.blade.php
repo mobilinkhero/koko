@@ -61,28 +61,35 @@
                                 btn.innerHTML = '<span class="flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>{{ t("opening_facebook_window") }}</span>';
 
                                 // Get redirect URI and config ID
+                                // IMPORTANT: Redirect URI must match EXACTLY what's whitelisted in Facebook App settings
+                                // Do NOT include popup=1 in the redirect_uri sent to Facebook
                                 const redirectUri = '{{ tenant_route("tenant.connect", ["state" => "embedded_signup"]) }}';
                                 const configId = '{{ $admin_fb_config_id }}';
                                 const apiVersion = '{{ get_setting("whatsapp.api_version", "v21.0") }}';
                                 const clientId = '{{ $admin_fb_app_id }}';
                                 
-                                console.log('[Embedded Signup] Configuration:', {
-                                    redirectUri: redirectUri,
-                                    configId: configId,
-                                    apiVersion: apiVersion,
-                                    clientId: clientId
-                                });
+                                console.log('[Embedded Signup] ===== CONFIGURATION BEING SENT TO FACEBOOK =====');
+                                console.log('[Embedded Signup] Facebook App ID (client_id):', clientId);
+                                console.log('[Embedded Signup] Facebook Config ID (config_id):', configId);
+                                console.log('[Embedded Signup] API Version:', apiVersion);
+                                console.log('[Embedded Signup] Redirect URI (must be whitelisted in FB App):', redirectUri);
+                                console.log('[Embedded Signup] Encoded Redirect URI:', encodeURIComponent(redirectUri));
+                                console.log('[Embedded Signup] ===========================================');
 
-                                // Build OAuth URL
+                                // Build OAuth URL - redirect_uri must match exactly what's in Facebook App settings
                                 const oauthUrl = 'https://www.facebook.com/' + apiVersion + '/dialog/oauth?' +
                                     'client_id=' + clientId + '&' +
                                     'config_id=' + configId + '&' +
-                                    'redirect_uri=' + encodeURIComponent(redirectUri + '&popup=1') + '&' +
+                                    'redirect_uri=' + encodeURIComponent(redirectUri) + '&' +
                                     'response_type=code&' +
                                     'scope=whatsapp_business_management,business_management&' +
                                     'state=embedded_signup';
                                 
+                                console.log('[Embedded Signup] ===== COMPLETE OAUTH URL =====');
                                 console.log('[Embedded Signup] OAuth URL:', oauthUrl);
+                                console.log('[Embedded Signup] ===========================================');
+                                console.log('[Embedded Signup] ⚠️  IMPORTANT: Add this redirect URI to Facebook App OAuth settings:');
+                                console.log('[Embedded Signup] Redirect URI to whitelist:', redirectUri);
 
                                 // Open Facebook Embedded Signup popup using OAuth dialog
                                 const popup = window.open(
