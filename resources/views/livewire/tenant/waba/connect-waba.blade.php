@@ -525,24 +525,46 @@
         
         // First try cached button
         if (embeddedSignupButton) {
-            try {
-                embeddedSignupButton.click();
-                console.log('Triggered embedded signup using cached button');
-                return true;
-            } catch (e) {
-                console.log('Cached button click failed:', e);
+            // Verify the button still exists and is not the empty container div
+            if (embeddedSignupButton.classList && embeddedSignupButton.classList.contains('fb-embedded-signup') && embeddedSignupButton.innerHTML.trim() === '') {
+                console.log('Cached button is empty container div, clearing cache...');
                 embeddedSignupButton = null;
+            } else {
+                try {
+                    console.log('Attempting to click cached button...');
+                    embeddedSignupButton.click();
+                    console.log('✅ Triggered embedded signup using cached button');
+                    return true;
+                } catch (e) {
+                    console.log('Cached button click failed:', e);
+                    embeddedSignupButton = null;
+                }
             }
         }
         
         // Try to find button in container
+        const selectors = [
+            '.fb-embedded-signup button',  // Actual button inside widget
+            '.fb-embedded-signup iframe',   // Iframe Facebook creates
+            'button',                       // Any button
+            '[role="button"]',              // Elements with button role
+            'iframe'                        // Any iframe
+        ];
+        
         for (let selector of selectors) {
             const button = container.querySelector(selector);
             if (button) {
+                // Skip if this is the empty container div
+                if (button.classList && button.classList.contains('fb-embedded-signup') && button.innerHTML.trim() === '') {
+                    console.log('Skipping empty container div:', selector);
+                    continue;
+                }
+                
                 embeddedSignupButton = button;
                 try {
+                    console.log('Attempting to click button found with selector:', selector);
                     button.click();
-                    console.log('Found and clicked button with selector:', selector);
+                    console.log('✅ Found and clicked button with selector:', selector);
                     return true;
                 } catch (e) {
                     console.log('Click failed for selector:', selector, e);
@@ -801,6 +823,7 @@
         console.log('Container found, setting up visibility...');
         // Make container visible (but off-screen) so Facebook can render the widget
         // Facebook's widget needs to be visible to render properly
+        // IMPORTANT: The container AND the widget div inside must be visible for Facebook to render
         container.style.display = 'block';
         container.style.visibility = 'visible';
         container.style.position = 'absolute';
@@ -809,6 +832,14 @@
         container.style.width = '400px';
         container.style.height = '50px';
         container.style.opacity = '1';
+        container.style.zIndex = '-1';
+        
+        console.log('Container visibility set:', {
+            display: container.style.display,
+            visibility: container.style.visibility,
+            opacity: container.style.opacity,
+            position: container.style.position
+        });
         
         // Only render if container is empty
         if (container.innerHTML.trim() === '') {
@@ -821,6 +852,7 @@
             
             // Use Facebook's Embedded Signup widget - it will open in popup automatically
             // The widget uses the config_id from admin panel
+            // IMPORTANT: The widget div must be visible for Facebook to render the button inside it
             container.innerHTML = `
                 <div class="fb-embedded-signup" 
                      data-config-id="{{ $admin_fb_config_id }}"
@@ -831,9 +863,70 @@
             `;
             
             console.log('Widget HTML inserted, parsing with FB.XFBML...');
+            console.log('Container visibility before parse:', {
+                display: window.getComputedStyle(container).display,
+                visibility: window.getComputedStyle(container).visibility,
+                opacity: window.getComputedStyle(container).opacity
+            });
+            
+            // Get the widget div and ensure it's visible for Facebook to render
+            const widgetDiv = container.querySelector('.fb-embedded-signup');
+            if (widgetDiv) {
+                // Remove any hiding styles - Facebook needs it visible to render
+                widgetDiv.style.display = '';
+                widgetDiv.style.visibility = '';
+                widgetDiv.style.opacity = '';
+                widgetDiv.style.width = '100%';
+                widgetDiv.style.height = 'auto';
+                console.log('Widget div made visible for Facebook rendering');
+            }
+            
             try {
                 FB.XFBML.parse(container);
                 console.log('✅ FB.XFBML.parse completed successfully');
+                
+                // Wait for Facebook to render the actual button inside the widget
+                // Facebook renders asynchronously, so we need to wait
+                let checkCount = 0;
+                const maxChecks = 10; // Check for up to 5 seconds
+                
+                const checkForRenderedButton = function() {
+                    checkCount++;
+                    const widgetDiv = container.querySelector('.fb-embedded-signup');
+                    if (widgetDiv) {
+                        const hasContent = widgetDiv.innerHTML.trim() !== '';
+                        const hasChildren = widgetDiv.children.length > 0;
+                        const hasIframe = widgetDiv.querySelector('iframe') !== null;
+                        const hasButton = widgetDiv.querySelector('button') !== null;
+                        
+                        console.log(`Check ${checkCount}/${maxChecks}: Widget status:`, {
+                            hasContent: hasContent,
+                            innerHTML_length: widgetDiv.innerHTML.length,
+                            children_count: widgetDiv.children.length,
+                            has_iframe: hasIframe,
+                            has_button: hasButton
+                        });
+                        
+                        if (hasContent || hasChildren || hasIframe || hasButton) {
+                            console.log('✅ Facebook has rendered the widget!');
+                            console.log('Widget innerHTML (first 500 chars):', widgetDiv.innerHTML.substring(0, 500));
+                            // Widget is rendered, now we can find the actual button
+                            findEmbeddedButton();
+                            return;
+                        }
+                    }
+                    
+                    if (checkCount < maxChecks) {
+                        setTimeout(checkForRenderedButton, 500);
+                    } else {
+                        console.error('❌ Facebook widget did not render after 5 seconds');
+                        console.error('Widget div innerHTML:', widgetDiv ? widgetDiv.innerHTML : 'Widget div not found');
+                    }
+                };
+                
+                // Start checking after a short delay
+                setTimeout(checkForRenderedButton, 500);
+                
             } catch (e) {
                 console.error('❌ ERROR parsing FB XFBML:', e);
                 console.error('Error details:', {
@@ -843,6 +936,7 @@
             }
         } else {
             // Widget already rendered, try to find the button
+            console.log('Widget already exists, trying to find button...');
             findEmbeddedButton();
         }
         
@@ -902,33 +996,42 @@
             console.log(`Child ${index}:`, child.tagName, child.className, child.id, child.innerHTML.substring(0, 200));
         });
         
+        // IMPORTANT: Don't select the container div itself - we need the actual button Facebook creates
+        // The container div (.fb-embedded-signup) is just the wrapper, not the button
         const selectors = [
-            'button',
-            '[role="button"]',
-            '.fb-embedded-signup button',
-            'iframe',
-            'div[role="button"]',
-            'a[role="button"]',
-            'span[role="button"]',
-            'div.fb-embedded-signup',
-            '*[onclick]',
-            '*[data-testid]'
+            '.fb-embedded-signup button',  // Actual button inside the widget
+            '.fb-embedded-signup iframe',  // Iframe that Facebook creates
+            'button',  // Any button (but not the container div)
+            '[role="button"]',  // Elements with button role
+            'iframe',  // Any iframe
+            'div[role="button"]',  // Div with button role
+            'a[role="button"]',  // Anchor with button role
+            'span[role="button"]',  // Span with button role
+            '*[onclick]',  // Elements with onclick
+            '*[data-testid]'  // Elements with test IDs
         ];
         
         for (let selector of selectors) {
             const button = container.querySelector(selector);
             if (button) {
-                embeddedSignupButton = button;
-                // Hide Facebook's default button (we'll use our custom styled button)
-                if (button.style) {
-                    button.style.display = 'none';
-                    button.style.visibility = 'hidden';
-                    button.style.opacity = '0';
-                    button.style.position = 'absolute';
-                    button.style.width = '1px';
-                    button.style.height = '1px';
+                // Skip if this is the container div itself (not the actual button)
+                if (button.classList.contains('fb-embedded-signup') && button.children.length === 0) {
+                    console.log('Skipping container div (not the actual button):', selector);
+                    continue;
                 }
-                console.log('Facebook embedded signup button found with selector:', selector, button);
+                
+                embeddedSignupButton = button;
+                console.log('✅ Facebook embedded signup button found with selector:', selector);
+                console.log('Button details:', {
+                    tagName: button.tagName,
+                    className: button.className,
+                    id: button.id,
+                    innerHTML: button.innerHTML.substring(0, 200),
+                    children: button.children.length
+                });
+                
+                // Don't hide the button - we need it visible for Facebook to work
+                // Just store the reference
                 return true;
             }
         }
