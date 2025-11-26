@@ -52,7 +52,7 @@ class FlowList extends Component
         return [
             'botFlow.name' => [
                 'required',
-                'unique:sources,name,'.($this->botFlow->id ?? 'NULL'),
+                'unique:bot_flows,name,'.($this->botFlow->id ?? 'NULL').',id,tenant_id,'.tenant_id(),
                 new PurifiedInput(t('sql_injection_error')),
                 'max:150',
             ],
