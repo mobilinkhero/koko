@@ -38,9 +38,19 @@
     </div>
     
     <script>
+        console.log('[Embedded Signup Callback] Page loaded');
+        console.log('[Embedded Signup Callback] Has opener:', !!window.opener);
+        console.log('[Embedded Signup Callback] Window origin:', window.location.origin);
+        @if($code)
+        console.log('[Embedded Signup Callback] Code received:', '{{ $code }}');
+        @elseif($error)
+        console.log('[Embedded Signup Callback] Error received:', '{{ $error }}', '{{ $error_description ?? "Unknown error" }}');
+        @endif
+        
         // Send message to parent window
         if (window.opener) {
-            window.opener.postMessage({
+            console.log('[Embedded Signup Callback] Sending message to parent window...');
+            const messageData = {
                 type: 'facebook_embedded_signup_callback',
                 @if($code)
                 code: '{{ $code }}'
@@ -48,13 +58,24 @@
                 error: '{{ $error }}',
                 error_description: '{{ $error_description ?? "Unknown error" }}'
                 @endif
-            }, window.location.origin);
+            };
+            console.log('[Embedded Signup Callback] Message data:', messageData);
+            console.log('[Embedded Signup Callback] Target origin:', window.location.origin);
+            
+            try {
+                window.opener.postMessage(messageData, window.location.origin);
+                console.log('[Embedded Signup Callback] Message sent successfully');
+            } catch (error) {
+                console.error('[Embedded Signup Callback] Error sending message:', error);
+            }
             
             // Close popup after a short delay
             setTimeout(function() {
+                console.log('[Embedded Signup Callback] Closing popup...');
                 window.close();
-            }, 500);
+            }, 1000);
         } else {
+            console.log('[Embedded Signup Callback] No opener found, redirecting normally');
             // Not in popup, redirect normally
             window.location.href = '{{ tenant_route("tenant.connect") }}';
         }

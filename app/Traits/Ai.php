@@ -20,7 +20,7 @@ trait Ai
      */
     protected function loadAiSettings()
     {
-        if (! isset($this->aiSettings)) {
+        if (!isset($this->aiSettings)) {
             $this->aiSettings = get_batch_settings([
                 'whats-mark.chat_model',
             ]);
@@ -37,7 +37,7 @@ trait Ai
             $client = $openAi->client($openAiKey);
             $response = $client->models()->list();
 
-            if ($response === null || ! is_object($response)) {
+            if ($response === null || !is_object($response)) {
                 throw new \RuntimeException('Invalid response format from OpenAI API.');
             }
 
@@ -95,8 +95,8 @@ trait Ai
             $prompt = match ($menuItem) {
                 'Simplify Language' => 'You will be provided with statements, and your task is to convert them to Simplify Language. but don\'t change inputed language.',
                 'Fix Spelling & Grammar' => 'You will be provided with statements, and your task is to convert them to standard Language. but don\'t change inputed language.',
-                'Translate' => 'You will be provided with a sentence, and your task is to translate it into '.$submenuItem.', only give translated sentence',
-                'Change Tone' => 'You will be provided with statements, and your task is to change tone into '.$submenuItem.'. but don\'t change inputed language.',
+                'Translate' => 'You will be provided with a sentence, and your task is to translate it into ' . $submenuItem . ', only give translated sentence',
+                'Change Tone' => 'You will be provided with statements, and your task is to change tone into ' . $submenuItem . '. but don\'t change inputed language.',
                 'Custom Prompt' => $submenuItem,
             };
 
@@ -134,12 +134,12 @@ trait Ai
         if ($tenantId !== null) {
             return get_tenant_setting_by_tenant_id('whats-mark', 'openai_secret_key', null, $tenantId);
         }
-        
+
         // Try to get tenant ID from wa_tenant_id property if available (WhatsApp trait)
         if (property_exists($this, 'wa_tenant_id') && !empty($this->wa_tenant_id)) {
             return get_tenant_setting_by_tenant_id('whats-mark', 'openai_secret_key', null, $this->wa_tenant_id);
         }
-        
+
         // Fallback to current tenant context
         return get_tenant_setting_from_db('whats-mark', 'openai_secret_key');
     }
@@ -156,17 +156,16 @@ trait Ai
      * @return array Contains status and response
      */
     public function personalAssistantResponse(
-        string $message, 
-        array $conversationHistory = [], 
+        string $message,
+        array $conversationHistory = [],
         ?PersonalAssistant $assistant = null,
         ?int $contactId = null,
         ?string $contactPhone = null,
         ?int $tenantId = null
-    ): array
-    {
+    ): array {
         $logFile = storage_path('logs/aipersonaldebug.log');
         $timestamp = now()->format('Y-m-d H:i:s');
-        
+
         // Get tenant ID for API key retrieval
         $tenantId = null;
         if (property_exists($this, 'wa_tenant_id') && !empty($this->wa_tenant_id)) {
@@ -174,7 +173,7 @@ trait Ai
         } elseif (function_exists('tenant_id')) {
             $tenantId = tenant_id();
         }
-        
+
         // Log request start
         $this->logToFile($logFile, "================================================================================");
         $this->logToFile($logFile, "[$timestamp] PERSONAL AI ASSISTANT - REQUEST START");
@@ -182,18 +181,26 @@ trait Ai
         $this->logToFile($logFile, "USER MESSAGE: " . $message);
         $this->logToFile($logFile, "CONVERSATION HISTORY COUNT: " . count($conversationHistory));
         $this->logToFile($logFile, "TENANT ID: " . ($tenantId ?? 'N/A'));
-        
+
         try {
             // Use provided assistant or fall back to getForCurrentTenant for backward compatibility
             if (!$assistant) {
-                $assistant = PersonalAssistant::getForCurrentTenant();
+                // SECURITY FIX: In webhook contexts (WhatsApp), Laravel tenant context may not be set
+                // Use wa_tenant_id property if available to ensure correct tenant isolation
+                if (property_exists($this, 'wa_tenant_id') && !empty($this->wa_tenant_id)) {
+                    $this->logToFile($logFile, "FALLBACK: Using wa_tenant_id ({$this->wa_tenant_id}) to get assistant");
+                    $assistant = PersonalAssistant::getForTenant($this->wa_tenant_id);
+                } else {
+                    $this->logToFile($logFile, "FALLBACK: Using getCurrentTenant() to get assistant");
+                    $assistant = PersonalAssistant::getForCurrentTenant();
+                }
             }
-            
+
             if (!$assistant) {
                 $this->logToFile($logFile, "ERROR: No personal assistant configured for this tenant");
                 $this->logToFile($logFile, "RESPONSE: No personal assistant configured");
                 $this->logToFile($logFile, "================================================================================\n");
-                
+
                 return [
                     'status' => false,
                     'message' => 'No personal assistant configured for this tenant.',
@@ -215,7 +222,7 @@ trait Ai
                 $this->logToFile($logFile, "ERROR: Personal assistant is disabled");
                 $this->logToFile($logFile, "RESPONSE: Assistant currently disabled");
                 $this->logToFile($logFile, "================================================================================\n");
-                
+
                 return [
                     'status' => false,
                     'message' => 'Personal assistant is currently disabled.',
@@ -230,7 +237,7 @@ trait Ai
 
             // Fallback to Chat Completions API if not synced
             $this->logToFile($logFile, "USING CHAT COMPLETIONS API (Fallback - Assistant not synced)");
-            
+
             // Get and validate API key with tenant ID
             $openAiKey = $this->getOpenAiKey($tenantId);
             if (empty($openAiKey)) {
@@ -239,45 +246,45 @@ trait Ai
                 $this->logToFile($logFile, "  - Setting Key: whats-mark.openai_secret_key");
                 $this->logToFile($logFile, "  - Current Tenant Context: " . (tenant_id() ?? 'N/A'));
                 $this->logToFile($logFile, "  - Has wa_tenant_id: " . (property_exists($this, 'wa_tenant_id') ? ($this->wa_tenant_id ?? 'NULL') : 'NO PROPERTY'));
-                
+
                 return [
                     'status' => false,
                     'message' => 'OpenAI API key is not configured. Please configure it in settings.',
                 ];
             }
-            
+
             $config = new OpenAIConfig;
             $config->apiKey = $openAiKey;
             $config->model = $assistant->model;
 
             $chat = new OpenAIChat($config);
-            
+
             // Build message array with system context
             $messages = [];
-            
+
             // Add system instructions with knowledge base
             $systemContext = $assistant->getFullSystemContext();
             $messages[] = ['role' => 'system', 'content' => $systemContext];
-            
+
             $this->logToFile($logFile, "SYSTEM CONTEXT:");
             $this->logToFile($logFile, "  - System Instructions Length: " . strlen($assistant->system_instructions) . " chars");
             $this->logToFile($logFile, "  - Processed Content Length: " . strlen($assistant->processed_content ?? '') . " chars");
             $this->logToFile($logFile, "  - Total Context Length: " . strlen($systemContext) . " chars");
-            
+
             // Add conversation history if provided
             if (!empty($conversationHistory)) {
                 $this->logToFile($logFile, "CONVERSATION HISTORY:");
                 foreach ($conversationHistory as $index => $historyMessage) {
                     if (isset($historyMessage['role']) && isset($historyMessage['content'])) {
                         $messages[] = [
-                            'role' => $historyMessage['role'], 
+                            'role' => $historyMessage['role'],
                             'content' => $historyMessage['content']
                         ];
                         $this->logToFile($logFile, "  [$index] " . strtoupper($historyMessage['role']) . ": " . substr($historyMessage['content'], 0, 100) . "...");
                     }
                 }
             }
-            
+
             // Add current user message
             $messages[] = ['role' => 'user', 'content' => $message];
 
@@ -317,7 +324,7 @@ trait Ai
             $this->logToFile($logFile, "---");
             $this->logToFile($logFile, $response);
             $this->logToFile($logFile, "---");
-            
+
             // Convert markdown formatting to WhatsApp formatting
             $formattedResponse = $this->convertMarkdownToWhatsApp($response);
 
@@ -352,7 +359,7 @@ trait Ai
             $this->logToFile($logFile, "  - Message: Assistant temporarily unavailable: " . $th->getMessage());
             $this->logToFile($logFile, "[$timestamp] PERSONAL AI ASSISTANT - REQUEST END (ERROR)");
             $this->logToFile($logFile, "================================================================================\n");
-            
+
             whatsapp_log('Personal Assistant Error', 'error', [
                 'error' => $th->getMessage(),
                 'message' => $message,
@@ -369,16 +376,15 @@ trait Ai
      * Use OpenAI Assistants API with threads
      */
     protected function useOpenAIAssistantsAPI(
-        PersonalAssistant $assistant, 
-        string $message, 
-        array $conversationHistory, 
-        $logFile, 
+        PersonalAssistant $assistant,
+        string $message,
+        array $conversationHistory,
+        $logFile,
         $timestamp,
         ?int $contactId = null,
         ?string $contactPhone = null,
         ?int $tenantId = null
-    ): array
-    {
+    ): array {
         try {
             // Get tenant ID for API key retrieval
             $tenantId = null;
@@ -387,19 +393,19 @@ trait Ai
             } elseif (function_exists('tenant_id')) {
                 $tenantId = tenant_id();
             }
-            
+
             $apiKey = $this->getOpenAiKey($tenantId);
-            
+
             if (empty($apiKey)) {
                 $this->logToFile($logFile, "ERROR: OpenAI API key is not configured");
                 $this->logToFile($logFile, "  - Tenant ID Used: " . ($tenantId ?? 'N/A'));
                 $this->logToFile($logFile, "  - Current Tenant Context: " . (tenant_id() ?? 'N/A'));
                 $this->logToFile($logFile, "  - Setting Key: whats-mark.openai_secret_key");
                 $this->logToFile($logFile, "  - Has wa_tenant_id: " . (property_exists($this, 'wa_tenant_id') ? ($this->wa_tenant_id ?? 'NULL') : 'NO PROPERTY'));
-                
+
                 throw new \Exception('OpenAI API key is not configured. Please configure it in settings.');
             }
-            
+
             $baseUrl = 'https://api.openai.com/v1';
             $assistantId = $assistant->openai_assistant_id;
 
@@ -414,7 +420,7 @@ trait Ai
             // Step 1: Get or create OpenAI thread for this contact
             $threadId = null;
             $aiConversation = null;
-            
+
             if ($contactId && $tenantId) {
                 // Try to get existing conversation with OpenAI thread_id stored in conversation_data
                 $aiConversation = \App\Models\Tenant\AiConversation::where('tenant_id', $tenantId)
@@ -422,18 +428,18 @@ trait Ai
                     ->where('is_active', true)
                     ->where('last_activity_at', '>', now()->subHours(24)) // Use same thread for 24 hours
                     ->first();
-                
+
                 if ($aiConversation) {
                     $conversationData = $aiConversation->conversation_data ?? [];
                     $threadId = $conversationData['openai_thread_id'] ?? null;
-                    
+
                     if ($threadId) {
                         $this->logToFile($logFile, "  - Reusing existing OpenAI Thread ID: " . $threadId);
                         $this->logToFile($logFile, "  - Conversation ID: " . $aiConversation->id);
                     }
                 }
             }
-            
+
             // If no existing thread, create a new one
             if (!$threadId) {
                 $this->logToFile($logFile, "  - Creating new OpenAI thread...");
@@ -453,9 +459,9 @@ trait Ai
                 if (!$threadId) {
                     throw new \Exception('Thread ID not returned from OpenAI');
                 }
-                
+
                 $this->logToFile($logFile, "  - New OpenAI Thread ID: " . $threadId);
-                
+
                 // Store the OpenAI thread_id in the conversation record
                 if ($contactId && $tenantId) {
                     if (!$aiConversation) {
@@ -464,7 +470,7 @@ trait Ai
                             'messages' => [],
                             'openai_thread_id' => $threadId,
                         ];
-                        
+
                         $aiConversation = \App\Models\Tenant\AiConversation::create([
                             'tenant_id' => $tenantId,
                             'contact_id' => $contactId,
@@ -482,7 +488,7 @@ trait Ai
                         // Update existing conversation with OpenAI thread_id
                         $conversationData = $aiConversation->conversation_data ?? [];
                         $conversationData['openai_thread_id'] = $threadId;
-                        
+
                         $aiConversation->update([
                             'conversation_data' => $conversationData,
                             'last_activity_at' => now(),
@@ -505,9 +511,9 @@ trait Ai
                             'Content-Type' => 'application/json',
                             'OpenAI-Beta' => 'assistants=v2',
                         ])->post("{$baseUrl}/threads/{$threadId}/messages", [
-                            'role' => $role,
-                            'content' => $historyMessage['content'],
-                        ]);
+                                    'role' => $role,
+                                    'content' => $historyMessage['content'],
+                                ]);
                     }
                 }
             } elseif ($aiConversation) {
@@ -520,19 +526,19 @@ trait Ai
                 'Content-Type' => 'application/json',
                 'OpenAI-Beta' => 'assistants=v2',
             ])->post("{$baseUrl}/threads/{$threadId}/messages", [
-                'role' => 'user',
-                'content' => $message,
-            ]);
+                        'role' => 'user',
+                        'content' => $message,
+                    ]);
 
             // Step 4: Run the assistant on the thread
             $this->logToFile($logFile, "RUNNING ASSISTANT ON THREAD...");
             $runRequestData = [
                 'assistant_id' => $assistantId,
             ];
-            
+
             // Note: max_completion_tokens is not a valid parameter for Assistants API
             // The max_tokens setting is handled by the model itself
-            
+
             $runResponse = \Illuminate\Support\Facades\Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
                 'Content-Type' => 'application/json',
@@ -622,7 +628,7 @@ trait Ai
 
             // Convert markdown formatting to WhatsApp formatting
             $formattedResponse = $this->convertMarkdownToWhatsApp($response);
-            
+
             // Update conversation record with last activity
             if ($aiConversation) {
                 $aiConversation->update([
@@ -656,7 +662,7 @@ trait Ai
 
             // Fallback to Chat Completions API
             $this->logToFile($logFile, "FALLING BACK TO CHAT COMPLETIONS API...");
-            
+
             $config = new OpenAIConfig;
             $config->apiKey = $this->getOpenAiKey();
             $config->model = $assistant->model;
@@ -664,27 +670,27 @@ trait Ai
             $config->maxTokens = $assistant->max_tokens;
 
             $chat = new OpenAIChat($config);
-            
+
             $messages = [];
             $systemContext = $assistant->getFullSystemContext();
             $messages[] = ['role' => 'system', 'content' => $systemContext];
-            
+
             if (!empty($conversationHistory)) {
                 foreach ($conversationHistory as $historyMessage) {
                     if (isset($historyMessage['role']) && isset($historyMessage['content'])) {
                         $messages[] = [
-                            'role' => $historyMessage['role'], 
+                            'role' => $historyMessage['role'],
                             'content' => $historyMessage['content']
                         ];
                     }
                 }
             }
-            
+
             $messages[] = ['role' => 'user', 'content' => $message];
-            
+
             try {
                 $response = $chat->generateChat($messages);
-                
+
                 return [
                     'status' => true,
                     'message' => $response,
@@ -712,7 +718,7 @@ trait Ai
             if (!file_exists($directory)) {
                 mkdir($directory, 0755, true);
             }
-            
+
             file_put_contents($filePath, $message . "\n", FILE_APPEND);
         } catch (\Exception $e) {
             // Silently fail if logging fails
@@ -725,7 +731,7 @@ trait Ai
     public function getPersonalAssistantInfo(): ?array
     {
         $assistant = PersonalAssistant::getForCurrentTenant();
-        
+
         if (!$assistant) {
             return null;
         }
@@ -766,13 +772,13 @@ trait Ai
     {
         // Convert markdown bold **text** to WhatsApp bold *text*
         $text = preg_replace('/\*\*(.+?)\*\*/', '*$1*', $text);
-        
+
         // Convert markdown code `text` to WhatsApp monospace ```text```
         $text = preg_replace('/`([^`]+)`/', '```$1```', $text);
-        
+
         // Convert markdown strikethrough ~~text~~ to WhatsApp strikethrough ~text~
         $text = preg_replace('/~~(.+?)~~/', '~$1~', $text);
-        
+
         return $text;
     }
 }

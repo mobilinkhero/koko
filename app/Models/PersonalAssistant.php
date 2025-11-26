@@ -110,6 +110,43 @@ class PersonalAssistant extends Model
     }
 
     /**
+     * Get active assistant for a specific tenant ID
+     * This method is used in webhook contexts where Laravel tenant context may not be set
+     * 
+     * @param int|null $tenantId The tenant ID
+     * @return self|null The active assistant or null
+     */
+    public static function getForTenant(?int $tenantId): ?self
+    {
+        if (!$tenantId) {
+            return null;
+        }
+
+        return static::where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    /**
+     * Get a specific assistant by ID with tenant verification
+     * This ensures the assistant belongs to the specified tenant
+     * 
+     * @param int $assistantId The assistant ID
+     * @param int|null $tenantId The tenant ID to verify against
+     * @return self|null The assistant or null if not found or doesn't belong to tenant
+     */
+    public static function findForTenant(int $assistantId, ?int $tenantId): ?self
+    {
+        if (!$tenantId) {
+            return null;
+        }
+
+        return static::where('id', $assistantId)
+            ->where('tenant_id', $tenantId)
+            ->first();
+    }
+
+    /**
      * Get all assistants for current tenant
      */
     public static function getAllForCurrentTenant()
