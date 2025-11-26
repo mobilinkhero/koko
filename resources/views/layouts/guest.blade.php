@@ -2,38 +2,42 @@
 @php
 $isTenant = tenant_check();
 if ($isTenant) {
-$systemSettings = tenant_settings_by_group('system');
-$pusherSettings = tenant_settings_by_group('pusher');
+    $systemSettings = tenant_settings_by_group('system');
+    $pusherSettings = tenant_settings_by_group('pusher');
 } else {
-$themeSettings = get_batch_settings([
-'system.active_language',
-'theme.seo_meta_title',
-'theme.seo_meta_description',
-'theme.favicon',
-]);
+    $themeSettings = get_batch_settings([
+        'system.active_language',
+        'system.site_name',
+        'theme.seo_meta_title',
+        'theme.seo_meta_description',
+        'theme.favicon',
+    ]);
 }
 $countryCode = get_setting('system.default_country_code');
 $locale = Auth::check()
-? Session::get('locale', config('app.locale'))
-: ($isTenant
-? $systemSettings['active_language']
-: $themeSettings['system.active_language'] ?? config('app.locale'));
+    ? Session::get('locale', config('app.locale'))
+    : ($isTenant
+        ? $systemSettings['active_language']
+        : $themeSettings['system.active_language'] ?? config('app.locale'));
 
-$metaTitle =
-$themeSettings['theme.seo_meta_title'] ??
-t('app_name');
+// Use site_name from database, fallback to theme SEO title, then config
+$metaTitle = !empty($themeSettings['system.site_name'])
+    ? $themeSettings['system.site_name']
+    : (!empty($themeSettings['theme.seo_meta_title'])
+        ? $themeSettings['theme.seo_meta_title']
+        : config('app.name', 'Chatvo'));
 
 $metaDescription =
-$themeSettings['theme.seo_meta_description'] ??
-t('app_description');
+    $themeSettings['theme.seo_meta_description'] ??
+    t('app_description');
 
 $favicon = $isTenant
-? (isset($systemSettings['favicon'])
-? Storage::url($systemSettings['favicon'])
-: null)
-: ($themeSettings['theme.favicon']
-? Storage::url($themeSettings['theme.favicon'])
-: null);
+    ? (isset($systemSettings['favicon'])
+        ? Storage::url($systemSettings['favicon'])
+        : null)
+    : ($themeSettings['theme.favicon']
+        ? Storage::url($themeSettings['theme.favicon'])
+        : null);
 
 $pageTitle = isset($title) ? " - $title" : '';
 @endphp

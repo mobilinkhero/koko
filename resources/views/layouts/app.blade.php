@@ -9,6 +9,7 @@
     }
     $themeSettings = get_batch_settings([
         'system.active_language',
+        'system.site_name',
         'theme.seo_meta_title',
         'theme.seo_meta_description',
         'theme.favicon',
@@ -20,9 +21,12 @@
             ? $systemSettings['active_language']
             : $themeSettings['system.active_language'] ?? config('app.locale'));
 
-    $metaTitle = !empty($themeSettings['theme.seo_meta_title'])
-        ? $themeSettings['theme.seo_meta_title']
-        : t('app_name');
+    // Use site_name from database, fallback to theme SEO title, then translation
+    $metaTitle = !empty($themeSettings['system.site_name'])
+        ? $themeSettings['system.site_name']
+        : (!empty($themeSettings['theme.seo_meta_title'])
+            ? $themeSettings['theme.seo_meta_title']
+            : config('app.name', 'Chatvo'));
 
     $metaDescription = $themeSettings['theme.seo_meta_description'] ?? t('app_description');
 
@@ -30,8 +34,7 @@
 
     $pageTitle = isset($title) ? " - $title" : '';
 @endphp
-<html lang="{{ $locale }}" class="h-full" x-data="{ theme: $persist('light') }"
-    x-bind:class="{
+<html lang="{{ $locale }}" class="h-full" x-data="{ theme: $persist('light') }" x-bind:class="{
         'dark': theme === 'dark' || (theme === 'system' && window.matchMedia(
                 '(prefers-color-scheme: dark)')
             .matches)
@@ -106,11 +109,10 @@
         sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true'
     }" x-init=" @if (request()->routeIs('admin.*')) sidebarCollapsed = false;
 
-        @else
-            sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true'; @endif window.addEventListener('sidebar-state-changed', (e) => {
+    @else
+        sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true'; @endif window.addEventListener('sidebar-state-changed', (e) => {
          sidebarCollapsed = e.detail.collapsed;
-     });" @keydown.window.escape="open = false"
-        class="min-h-full flex" x-cloak>
+     });" @keydown.window.escape="open = false" class="min-h-full flex" x-cloak>
         @if (request()->routeIs('tenant.*'))
             <livewire:tenant.partials.tenant-sidebar-navigation />
         @else
