@@ -161,6 +161,23 @@ class WhatsAppWebhookController extends Controller
             $message_id = $payload['entry'][0]['changes'][0]['value']['messages'][0]['id'] ?? '';
             $this->currentMessageId = $message_id;
             $message_from = $payload['entry'][0]['changes'][0]['value']['messages'][0]['from'] ?? '';
+            
+            // LOOP PREVENTION: Check if message is from ourselves (echo)
+            // Get business phone number from metadata
+            $metadata = $payload['entry'][0]['changes'][0]['value']['metadata'] ?? [];
+            $business_phone = $metadata['display_phone_number'] ?? '';
+            
+            // If sender matches business phone, IT'S A LOOP! Ignore it.
+            if (!empty($business_phone) && $message_from === $business_phone) {
+                $this->logDuplicateTracking('LOOP_PREVENTION', [
+                    'request_id' => $this->currentRequestId,
+                    'action' => 'SKIPPED - Message from self',
+                    'from' => $message_from,
+                    'business_phone' => $business_phone
+                ]);
+                return;
+            }
+
             $message_text = $payload['entry'][0]['changes'][0]['value']['messages'][0]['text']['body'] ?? 
                            $payload['entry'][0]['changes'][0]['value']['messages'][0]['button']['text'] ?? 
                            $payload['entry'][0]['changes'][0]['value']['messages'][0]['interactive']['button_reply']['title'] ?? 'N/A';
