@@ -1676,6 +1676,13 @@ class WhatsAppWebhookController extends Controller
 
         // Use the new extraction method for both buttons and lists
         $button_id = $this->extractButtonIdFromMessage($message);
+        
+        $this->logToDuplicateFile('processBotFlow CALLED', [
+            'trigger_msg' => $trigger_msg,
+            'button_id' => $button_id,
+            'ref_message_id' => $ref_message_id,
+            'message_type' => $message['type'] ?? 'unknown',
+        ]);
 
         whatsapp_log('processBotFlow - Extracted data', 'info', [
             'trigger_msg' => $trigger_msg,
@@ -1848,6 +1855,13 @@ class WhatsAppWebhookController extends Controller
      */
     private function determineFlowExecution($contactData, $triggerMsg, $buttonId, $refMessageId, $chatId, $contactNumber, $phoneNumberId)
     {
+        $this->logToDuplicateFile('determineFlowExecution CALLED', [
+            'trigger_msg' => $triggerMsg,
+            'button_id' => $buttonId,
+            'ref_message_id' => $refMessageId,
+            'is_button_response' => !empty($buttonId),
+        ]);
+        
         whatsapp_log('Determine flow execution (database-free)', 'info', [
             'trigger_msg' => $triggerMsg,
             'button_id' => $buttonId,
