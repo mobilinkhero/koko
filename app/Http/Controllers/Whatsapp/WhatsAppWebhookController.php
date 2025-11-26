@@ -187,7 +187,7 @@ class WhatsAppWebhookController extends Controller
             // This prevents race condition during long-running flows (AI calls, etc.)
             $from = $payload['entry'][0]['changes'][0]['value']['messages'][0]['from'] ?? '';
             
-            whatsapp_log('DUPLICATE_DEBUG: Checking for existing message before placeholder insert', 'info', [
+            $this->logToDuplicateFile('Checking for existing message before placeholder insert', [
                 'message_id' => $message_id,
                 'from' => $from,
                 'tenant_id' => $this->tenant_id,
@@ -210,7 +210,7 @@ class WhatsAppWebhookController extends Controller
             
             // If wasRecentlyCreated is false, this message was already being processed
             if (!$placeholder->wasRecentlyCreated) {
-                whatsapp_log('DUPLICATE_DEBUG: Message already exists - BLOCKING duplicate', 'warning', [
+                $this->logToDuplicateFile('Message already exists - BLOCKING duplicate', [
                     'message_id' => $message_id,
                     'existing_id' => $placeholder->id,
                 ]);
@@ -218,7 +218,7 @@ class WhatsAppWebhookController extends Controller
                 return;
             }
             
-            whatsapp_log('DUPLICATE_DEBUG: Placeholder created successfully - PROCEEDING', 'info', [
+            $this->logToDuplicateFile('Placeholder created successfully - PROCEEDING', [
                 'message_id' => $message_id,
                 'placeholder_id' => $placeholder->id,
             ]);
@@ -1930,7 +1930,7 @@ class WhatsAppWebhookController extends Controller
                             }
 
                             // This is a specific match (exact/contains/first-time) - execute immediately
-                            whatsapp_log('DUPLICATE_DEBUG: Flow match found, executing', 'info', [
+                            $this->logToDuplicateFile('Flow match found, executing', [
                                 'flow_id' => $flow->id,
                                 'flow_name' => $flow->name ?? 'Unknown',
                                 'trigger_node_id' => $node['id'],
@@ -1940,7 +1940,7 @@ class WhatsAppWebhookController extends Controller
 
                             $result = $this->executeFlowFromStart($flow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
                             
-                            whatsapp_log('DUPLICATE_DEBUG: Flow execution completed, RETURNING', 'info', [
+                            $this->logToDuplicateFile('Flow execution completed, RETURNING', [
                                 'flow_id' => $flow->id,
                                 'flow_name' => $flow->name ?? 'Unknown',
                             ]);
@@ -3712,6 +3712,32 @@ class WhatsAppWebhookController extends Controller
                 'contact_number' => $contactNumber,
             ]);
         }
+    }
+
+    /**
+     * Log duplicate message debugging info to dedicated log file
+     */
+    private function logToDuplicateFile($message, $context = [])
+    {
+        $logFile = storage_path('logs/whatsappduplicate.log');
+        $timestamp = now()->format('Y-m-d H:i:s.u');
+        
+        // Format the log entry
+        $logEntry = sprintf(
+            "[%s] %s\n",
+            $timestamp,
+            $message
+        );
+        
+        // Add context if provided
+        if (!empty($context)) {
+            $logEntry .= "Context: " . json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        }
+        
+        $logEntry .= str_repeat('-', 80) . "\n";
+        
+        // Append to log file
+        file_put_contents($logFile, $logEntry, FILE_APPEND | LOCK_EX);
     }
 
 }
