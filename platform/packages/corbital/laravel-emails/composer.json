@@ -1,0 +1,54 @@
+{
+  "name": "corbital/laravel-emails",
+  "description": "A comprehensive email sending and template management package for Laravel",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Corbital Developer",
+      "email": "contact@corbitaltech.dev"
+    }
+  ],
+  "require": {
+    "php": "^8.2",
+    "illuminate/support": "^10.0|^11.0|^12.0",
+    "illuminate/mail": "^10.0|^11.0|^12.0",
+    "illuminate/database": "^10.0|^11.0|^12.0",
+    "illuminate/view": "^10.0|^11.0|^12.0",
+    "spatie/laravel-settings": "^3.0",
+     "livewire/livewire": "^3.0"
+  },
+  "require-dev": {
+    "orchestra/testbench": "^8.0|^9.0",
+    "phpunit/phpunit": "^10.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Corbital\\LaravelEmails\\": "src/",
+      "Corbital\\LaravelEmails\\Database\\Seeders\\": "database/seeders/"
+    },
+    "files": [
+      "src/helpers.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Corbital\\LaravelEmails\\Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Corbital\\LaravelEmails\\LaravelEmailsServiceProvider"
+      ],
+      "aliases": {
+        "Email": "Corbital\\LaravelEmails\\Facades\\Email"
+      }
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}

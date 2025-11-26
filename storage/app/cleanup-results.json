@@ -1,0 +1,91 @@
+{
+    "deleted": [],
+    "not_found": [
+        {
+            "path": "temp_components\/nodes\/AIAssistantNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/ButtonMessageNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/CallToActionNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/ConditionNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/ContactMessageNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/ListMessageNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/LocationMessageNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/MediaMessageNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/ReactionMessageNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/TemplateMessageNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/TextMessageNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/nodes\/TriggerNode.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/ui\/CustomEdge.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "temp_components\/BotFlowBuilder.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "resources\/js\/dynamic-template\/components\/TemplateEditor.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "resources\/js\/dynamic-template\/components\/WhatsAppPreview.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        },
+        {
+            "path": "resources\/js\/dynamic-template\/components\/WhatsAppTemplateManager.vue",
+            "status": "Not Found",
+            "timestamp": "2025-10-17 05:40:52"
+        }
+    ],
+    "error": []
+}

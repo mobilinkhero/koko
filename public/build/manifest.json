@@ -1,0 +1,101 @@
+{
+  "__commonjsHelpers-Cpj98o6Y.js": {
+    "file": "assets/_commonjsHelpers-Cpj98o6Y.js",
+    "name": "_commonjsHelpers"
+  },
+  "_quill-BzY4kI8E.css": {
+    "file": "assets/quill-BzY4kI8E.css",
+    "src": "_quill-BzY4kI8E.css"
+  },
+  "_quill.snow-CL2RSb_c.js": {
+    "file": "assets/quill.snow-CL2RSb_c.js",
+    "name": "quill.snow",
+    "imports": [
+      "__commonjsHelpers-Cpj98o6Y.js"
+    ],
+    "css": [
+      "assets/quill-BzY4kI8E.css"
+    ]
+  },
+  "node_modules/intl-tel-input/build/img/flags.webp": {
+    "file": "assets/flags-a2kmUSbF.webp",
+    "src": "node_modules/intl-tel-input/build/img/flags.webp"
+  },
+  "node_modules/intl-tel-input/build/img/flags@2x.webp": {
+    "file": "assets/flags@2x-gR6KPp3x.webp",
+    "src": "node_modules/intl-tel-input/build/img/flags@2x.webp"
+  },
+  "node_modules/intl-tel-input/build/img/globe.webp": {
+    "file": "assets/globe-CKC-qWvL.webp",
+    "src": "node_modules/intl-tel-input/build/img/globe.webp"
+  },
+  "node_modules/intl-tel-input/build/img/globe@2x.webp": {
+    "file": "assets/globe@2x-CEs4Xftd.webp",
+    "src": "node_modules/intl-tel-input/build/img/globe@2x.webp"
+  },
+  "node_modules/intl-tel-input/build/js/utils.js": {
+    "file": "assets/utils-iWZaXObv.js",
+    "name": "utils",
+    "src": "node_modules/intl-tel-input/build/js/utils.js",
+    "isDynamicEntry": true
+  },
+  "public/img/chat/whatsapp_dark_bg.png": {
+    "file": "assets/whatsapp_dark_bg-CWfmzOL5.png",
+    "src": "public/img/chat/whatsapp_dark_bg.png"
+  },
+  "public/img/chat/whatsapp_light_bg.png": {
+    "file": "assets/whatsapp_light_bg-DxGV9uq9.png",
+    "src": "public/img/chat/whatsapp_light_bg.png"
+  },
+  "resources/css/admin-app.css": {
+    "file": "assets/admin-app-CnFgA0al.css",
+    "src": "resources/css/admin-app.css",
+    "isEntry": true
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-BWlD1A-x.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/css/tenant-app.css": {
+    "file": "assets/tenant-app-D_PHffoa.css",
+    "src": "resources/css/tenant-app.css",
+    "isEntry": true
+  },
+  "resources/js/admin-app.js": {
+    "file": "assets/admin-app-DahOQvr3.js",
+    "name": "admin-app",
+    "src": "resources/js/admin-app.js",
+    "isEntry": true,
+    "imports": [
+      "_quill.snow-CL2RSb_c.js",
+      "__commonjsHelpers-Cpj98o6Y.js"
+    ]
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-CFwiI7mj.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "imports": [
+      "__commonjsHelpers-Cpj98o6Y.js"
+    ],
+    "dynamicImports": [
+      "node_modules/intl-tel-input/build/js/utils.js",
+      "node_modules/intl-tel-input/build/js/utils.js"
+    ],
+    "css": [
+      "assets/app-BPI7Njeq.css"
+    ]
+  },
+  "resources/js/tenant-app.js": {
+    "file": "assets/tenant-app-2FACETf7.js",
+    "name": "tenant-app",
+    "src": "resources/js/tenant-app.js",
+    "isEntry": true,
+    "imports": [
+      "_quill.snow-CL2RSb_c.js",
+      "__commonjsHelpers-Cpj98o6Y.js"
+    ]
+  }
+}

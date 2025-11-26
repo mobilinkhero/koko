@@ -1,0 +1,24 @@
+{
+    "name": "app/systeminfo",
+    "description": "SystemInfo module for application",
+    "type": "laravel-module",
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your.email@example.com"
+        }
+    ],
+    "require": {},
+    "extra": {
+        "laravel": {
+            "providers": [
+                "App\\Modules\\SystemInfo\\Providers\\SystemInfoServiceProvider"
+            ]
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\Modules\\SystemInfo\\": ""
+        }
+    }
+}

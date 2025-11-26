@@ -1,0 +1,19 @@
+{
+    "name": "ApiWebhookManager",
+    "alias": "api-webhook-manager",
+    "namespace": "Modules\\ApiWebhookManager\\",
+    "provider": "Modules\\ApiWebhookManager\\Providers\\ApiWebhookManagerServiceProvider",
+    "author": "Corbital Technologies",
+    "url": "https://codecanyon.net/user/corbitaltech",
+    "version": "1.0.0",
+    "description": "The ApiWebhookManager Module",
+    "keywords": [],
+    "order": 0,
+    "providers": [
+        "Modules\\ApiWebhookManager\\Providers\\ApiWebhookManagerServiceProvider"
+    ],
+    "aliases": [],
+    "require": [],
+    "conflicts": [],
+    "type": "core"
+}

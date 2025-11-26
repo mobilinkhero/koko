@@ -1,0 +1,60 @@
+{
+    "name": "corbital/installer",
+    "description": "Laravel Web Application Installer",
+    "keywords": [
+        "corbital",
+        "installer",
+        "laravel",
+        "setup",
+        "wizard"
+    ],
+    "homepage": "https://github.com/corbital/installer",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "chirag jagani",
+            "email": "trueline.chirag@gmail.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/database": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0",
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Corbital\\Installer\\": "src",
+            "Corbital\\Installer\\Database\\": "database"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Corbital\\Installer\\Tests\\": "tests"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Corbital\\Installer\\Providers\\InstallerServiceProvider"
+            ],
+            "aliases": {
+                "Installer": "Corbital\\Installer\\Facades\\Installer"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

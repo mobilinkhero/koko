@@ -1,0 +1,28 @@
+2025-11-14 19:37:30 | Flow Execution Started
+    Data: {
+    "node_type": "mediaMessage",
+    "to": "923306055177",
+    "phone_number_id": "717118924823378",
+    "contact_id": 1,
+    "node_data_keys": [
+        "output",
+        "isValid",
+        "dimensions"
+    ]
+}
+    Memory: 3.69 MB
+--------------------------------------------------------------------------------
+2025-11-15 19:42:58 | Flow Execution Started
+    Data: {
+    "node_type": "buttonMessage",
+    "to": "923306055177",
+    "phone_number_id": "717118924823378",
+    "contact_id": 1,
+    "node_data_keys": [
+        "output",
+        "isValid",
+        "dimensions"
+    ]
+}
+    Memory: 3.92 MB
+--------------------------------------------------------------------------------

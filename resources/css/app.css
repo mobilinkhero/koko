@@ -1,0 +1,174 @@
+@import "tom-select/dist/css/tom-select.css";
+@import "../../node_modules/intl-tel-input/build/css/intlTelInput.min.css";
+@import "../../node_modules/glightbox/dist/css/glightbox.min.css";
+@import "./variables.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+[x-cloak] {
+    display: none;
+}
+
+.ts-wrapper {
+    @apply rounded-md focus-within:border-info-500 focus-within:ring-2 focus-within:ring-info-500
+  dark:border-gray-600 dark:focus-within:border-info-500 dark:focus-within:ring-info-500 bg-gray-900;
+}
+
+.ts-control {
+    @apply bg-white text-slate-900 dark:bg-slate-800 rounded-md dark:border-slate-500 dark:text-white z-0 !important;
+}
+
+/* Style when Tom Select is disabled */
+.ts-wrapper.disabled {
+    @apply bg-gray-200 dark:bg-gray-700 opacity-50 cursor-not-allowed;
+}
+.ts-control.disabled {
+    @apply bg-gray-300 dark:bg-gray-800 text-gray-500 dark:text-gray-400;
+}
+
+.ts-control input::placeholder {
+    @apply text-slate-800;
+}
+
+.ts-dropdown {
+    @apply bg-white border border-slate-300 rounded-md shadow-lg dark:bg-slate-800  dark:border-slate-600;
+}
+
+.ts-dropdown [data-selectable].option {
+    @apply bg-white text-slate-900 dark:bg-slate-800 dark:text-white text-sm hover:bg-primary-100 dark:hover:bg-primary-400 !important;
+}
+
+::-webkit-scrollbar {
+    width: 3px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    @apply bg-primary-200 !important;
+}
+
+.dark ::-webkit-scrollbar-track {
+    background: #1e293b; /* Dark mode track color */
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    @apply bg-primary-400 !important;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #64748b; /* Dark mode thumb color */
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #bac4d8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* Dark mode hover color */
+}
+
+.iti {
+    width: 100%;
+}
+
+.iti .iti__search-input {
+    border: 1px solid #d5d5d5;
+    border-radius: 5px;
+    padding: 5px;
+    width: 100%;
+}
+
+.iti .iti__dropdown-content {
+    width: 250px !important;
+    border-radius: 5px;
+}
+.iti .iti__selected-dial-code {
+    line-height: 1;
+    font-size: 14px;
+}
+/* Dark Mode Styles */
+.dark .iti {
+    background-color: #1e293b;
+}
+
+.dark .iti .iti__search-input {
+    background-color: #1e293b;
+    border: 1px solid #444;
+    color: #fff;
+}
+
+.dark .iti .iti__dropdown-content {
+    background-color: #1e293b;
+    color: #fff;
+    border: 1px solid #444;
+}
+
+.dark .iti .iti__search-input::placeholder {
+    color: #9ca3b1;
+}
+.dark .iti .iti__selected-dial-code {
+    color: #fff;
+    font-size: 14px;
+    line-height: 1;
+}
+
+#power-grid-table-base {
+    font-size: 14px !important;
+}
+
+/* Ensure the action links are hidden by default */
+.contact-actions {
+    display: none;
+}
+
+/* Show action links when hovering anywhere in the row */
+#power-grid-table-base tbody tr:hover .contact-actions {
+    display: flex;
+}
+
+.table {
+    background: white !important;
+}
+
+.dark .table {
+    background-color: #1e293b !important;
+}
+
+.pg-filter-container > div {
+    margin-bottom: 1rem; /* or use 16px or any value you prefer */
+}
+
+.pg-enabled-filters-base {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 15px;
+}
+
+/* Small devices (phones) */
+@media (max-width: 640px) {
+    .pg-enabled-filters-base {
+        gap: 8px;
+    }
+    .pg-enabled-filters-base > div {
+        margin-bottom: 5px;
+    }
+}
+
+/* Medium devices (tablets) */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .pg-enabled-filters-base {
+        gap: 12px;
+    }
+}
+
+/* Large devices (laptops/desktops) */
+@media (min-width: 1025px) {
+    .pg-enabled-filters-base {
+        gap: 20px;
+    }
+}

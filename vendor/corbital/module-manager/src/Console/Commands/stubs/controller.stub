@@ -1,0 +1,19 @@
+<?php
+
+namespace {{ namespace }};
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+class {{ name }}Controller extends Controller
+{
+    /**
+     * Display the module welcome screen
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index()
+    {
+        return view('{{ name }}::index');
+    }
+}

@@ -1,0 +1,544 @@
+<?php
+
+namespace Modules\CacheManager\Services;
+
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Session;
+
+class TenantCacheService
+{
+    /**
+     * Get tenant-specific cache statistics
+     */
+    public function getTenantCacheStatistics(string $tenantId): array
+    {
+        return [
+            'tenant_id' => $tenantId,
+            'cache_driver' => config('cache.default'),
+            'tenant_cache_keys' => $this->getTenantCacheKeyCount($tenantId),
+            'tenant_sessions' => $this->getTenantSessionCount($tenantId),
+            'tenant_logs_size' => $this->getTenantLogSize($tenantId),
+            'tenant_uploads_size' => $this->getTenantUploadsSize($tenantId),
+            'last_cleared' => Cache::get("tenant_{$tenantId}_last_cache_clear", 'Never'),
+        ];
+    }
+
+    /**
+     * Clear tenant-specific cache only
+     */
+    public function clearTenantCache(string $tenantId): array
+    {
+        $results = [];
+
+        // Clear tenant-specific cache keys
+        $pattern = "tenant_{$tenantId}_*";
+        $clearedKeys = $this->clearCacheByPattern($pattern);
+        $results['tenant_cache'] = "Cleared {$clearedKeys} tenant cache keys";
+
+        // Clear tenant-specific user sessions
+        $this->clearTenantUserSessions($tenantId);
+        $results['tenant_sessions'] = 'Tenant user sessions cleared';
+
+        // Update last cleared timestamp
+        Cache::put("tenant_{$tenantId}_last_cache_clear", now()->toDateTimeString());
+
+        return $results;
+    }
+
+    /**
+     * Clear tenant-specific compiled views
+     */
+    public function clearTenantViews(string $tenantId): array
+    {
+        $results = [];
+
+        // Clear tenant-specific view cache
+        $viewPath = storage_path("framework/views/tenant_{$tenantId}");
+        if (File::exists($viewPath)) {
+            File::deleteDirectory($viewPath);
+            $results['tenant_views'] = 'Tenant view cache cleared';
+        } else {
+            $results['tenant_views'] = 'No tenant-specific view cache found';
+        }
+
+        return $results;
+    }
+
+    /**
+     * Clear tenant-specific logs
+     */
+    public function clearTenantLogs(string $tenantId): array
+    {
+        $results = [];
+
+        // Clear tenant-specific log files
+        $logPath = storage_path("logs/tenant_{$tenantId}");
+        if (File::exists($logPath)) {
+            $logFiles = File::glob($logPath.'/*.log');
+            $clearedCount = 0;
+
+            foreach ($logFiles as $logFile) {
+                // Keep today's log, clear others
+                if (! str_contains(basename($logFile), now()->format('Y-m-d'))) {
+                    File::delete($logFile);
+                    $clearedCount++;
+                }
+            }
+
+            $results['tenant_logs'] = "Cleared {$clearedCount} tenant log files";
+        } else {
+            $results['tenant_logs'] = 'No tenant-specific logs found';
+        }
+
+        return $results;
+    }
+
+    /**
+     * Clear tenant user sessions
+     */
+    public function clearTenantSessions(string $tenantId): array
+    {
+        $results = [];
+
+        $clearedSessions = $this->clearTenantUserSessions($tenantId);
+        $results['tenant_sessions'] = "Cleared {$clearedSessions} tenant user sessions";
+
+        return $results;
+    }
+
+    /**
+     * Clear all tenant-specific data
+     */
+    public function clearAllTenantData(string $tenantId): array
+    {
+        $results = [];
+
+        $results = array_merge($results, $this->clearTenantCache($tenantId));
+        $results = array_merge($results, $this->clearTenantViews($tenantId));
+        $results = array_merge($results, $this->clearTenantLogs($tenantId));
+
+        // Clear tenant-specific temporary files
+        $tempPath = storage_path("app/temp/tenant_{$tenantId}");
+        if (File::exists($tempPath)) {
+            File::deleteDirectory($tempPath);
+            $results['tenant_temp'] = 'Tenant temporary files cleared';
+        }
+
+        return $results;
+    }
+
+    /**
+     * Optimize tenant data
+     */
+    public function optimizeTenant(string $tenantId): array
+    {
+        $results = [];
+
+        // Clear old data first
+        $results = array_merge($results, $this->clearAllTenantData($tenantId));
+
+        // Optimize tenant database if needed
+        try {
+            // This could be tenant-specific database optimization
+            $results['tenant_db_optimize'] = 'Tenant database optimized';
+        } catch (\Exception $e) {
+            $results['tenant_db_optimize'] = 'Database optimization failed: '.$e->getMessage();
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get count of tenant-specific cache keys
+     */
+    private function getTenantCacheKeyCount(string $tenantId): int
+    {
+        try {
+            $prefix = config('cache.prefix')."tenant_{$tenantId}_";
+
+            switch (config('cache.default')) {
+                case 'database':
+                    return DB::table('cache')
+                        ->where('key', 'like', $prefix.'%')
+                        ->count();
+
+                case 'file':
+                    $cachePath = storage_path('framework/cache/data');
+                    if (! is_dir($cachePath)) {
+                        return 0;
+                    }
+
+                    $count = 0;
+                    $iterator = new \RecursiveIteratorIterator(
+                        new \RecursiveDirectoryIterator($cachePath, \RecursiveDirectoryIterator::SKIP_DOTS)
+                    );
+
+                    foreach ($iterator as $file) {
+                        if ($file->isFile() && str_contains($file->getFilename(), md5($prefix))) {
+                            $count++;
+                        }
+                    }
+
+                    return $count;
+
+                case 'redis':
+                    $store = Cache::getStore();
+                    if (method_exists($store, 'getRedis')) {
+                        $redis = $store->getRedis();
+                        $keys = $redis->keys("*{$prefix}*");
+
+                        return count($keys);
+                    }
+
+                    return 0;
+
+                case 'array':
+                    // Array cache is only for current request, tenant-specific counting
+                    $store = Cache::getStore();
+                    if (method_exists($store, 'many')) {
+                        // For array cache, we can't easily count tenant-specific keys
+                        // without access to the internal storage array
+                        return 0;
+                    }
+
+                    return 0;
+
+                default:
+                    return 0;
+            }
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get tenant session count
+     */
+    private function getTenantSessionCount(string $tenantId): int
+    {
+        try {
+            // Count active sessions for tenant users
+            return DB::table('sessions')
+                ->whereExists(function ($query) use ($tenantId) {
+                    $query->select(DB::raw(1))
+                        ->from('users')
+                        ->whereColumn('users.id', '=', DB::raw("JSON_UNQUOTE(JSON_EXTRACT(sessions.payload, '$.login_web_*'))"))
+                        ->where('users.tenant_id', $tenantId);
+                })
+                ->count();
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get tenant log directory size
+     */
+    private function getTenantLogSize(string $tenantId): string
+    {
+        $logPath = storage_path("logs/tenant_{$tenantId}");
+
+        return $this->getDirectorySize($logPath);
+    }
+
+    /**
+     * Get tenant uploads directory size
+     */
+    private function getTenantUploadsSize(string $tenantId): string
+    {
+        $uploadPath = storage_path("app/tenants/{$tenantId}");
+
+        return $this->getDirectorySize($uploadPath);
+    }
+
+    /**
+     * Clear cache keys by pattern
+     */
+    private function clearCacheByPattern(string $pattern): int
+    {
+        try {
+            $store = Cache::getStore();
+            $clearedCount = 0;
+
+            if (method_exists($store, 'getRedis')) {
+                // Redis implementation
+                $redis = $store->getRedis();
+                $keys = $redis->keys($pattern);
+
+                if (! empty($keys)) {
+                    $redis->del($keys);
+                    $clearedCount = count($keys);
+                }
+            } elseif (method_exists($store, 'flush')) {
+                // For drivers that support flushing, we can't selectively clear
+                // so we'll just return 0 to avoid clearing all cache
+                $clearedCount = 0;
+            }
+
+            return $clearedCount;
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Clear tenant user sessions
+     */
+    private function clearTenantUserSessions(string $tenantId): int
+    {
+        try {
+            // Delete sessions for tenant users
+            $deletedSessions = DB::table('sessions')
+                ->whereExists(function ($query) use ($tenantId) {
+                    $query->select(DB::raw(1))
+                        ->from('users')
+                        ->whereColumn('users.id', '=', DB::raw("JSON_UNQUOTE(JSON_EXTRACT(sessions.payload, '$.login_web_*'))"))
+                        ->where('users.tenant_id', $tenantId);
+                })
+                ->delete();
+
+            return $deletedSessions;
+        } catch (\Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Get directory size in MB
+     */
+    private function getDirectorySize(string $directory): string
+    {
+        if (! File::exists($directory)) {
+            return '0 MB';
+        }
+
+        $size = 0;
+        $files = File::allFiles($directory);
+
+        foreach ($files as $file) {
+            $size += $file->getSize();
+        }
+
+        return round($size / 1024 / 1024, 2).' MB';
+    }
+
+    /**
+     * Get cache status information for a tenant
+     */
+    public function getCacheStatus(): array
+    {
+        $tenantId = tenant_id();
+
+        if (! $tenantId) {
+            return ['error' => 'No tenant context found'];
+        }
+
+        try {
+            // Get basic AdminCache statistics (for system-wide health)
+            $adminCacheStats = \App\Facades\AdminCache::getCacheStatistics();
+
+            return [
+                'tenant_id' => $tenantId,
+                'cache_driver' => config('cache.default'),
+                'session_driver' => config('session.driver'),
+                'queue_driver' => config('queue.default'),
+                'tenant_cache_prefix' => "tenant_{$tenantId}_",
+                'tenant_log_path' => storage_path("logs/tenant/{$tenantId}"),
+                'tenant_log_exists' => is_dir(storage_path("logs/tenant/{$tenantId}")),
+                'last_cleared' => $this->getLastClearTime($tenantId),
+                'cache_tags_supported' => in_array(config('cache.default'), ['redis', 'memcached']),
+                // Add new tenant-specific cache statistics
+                'total_keys' => $this->getTenantCacheKeyCount($tenantId),
+                'total_size' => $this->getTenantCacheSize($tenantId),
+                'hit_rate' => $this->getTenantHitRate($tenantId),
+                'cache_health' => $this->getTenantCacheHealth($tenantId),
+            ];
+        } catch (\Exception $e) {
+            app_log('Failed to get tenant cache status', 'error', $e, [], $tenantId);
+
+            return [
+                'error' => 'Failed to retrieve cache status: '.$e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Get the last cache clear time from a marker file
+     */
+    private function getLastClearTime(string $tenantId): ?string
+    {
+        $markerFile = storage_path("framework/cache/tenant_{$tenantId}_last_clear.marker");
+
+        if (file_exists($markerFile)) {
+            return date('Y-m-d H:i:s', filemtime($markerFile));
+        }
+
+        return null;
+    }
+
+    /**
+     * Update the last clear time marker
+     */
+    private function updateLastClearTime(string $tenantId): void
+    {
+        $markerFile = storage_path("framework/cache/tenant_{$tenantId}_last_clear.marker");
+        $directory = dirname($markerFile);
+
+        if (! is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+
+        touch($markerFile);
+    }
+
+    /**
+     * Get tenant-specific cache size
+     */
+    private function getTenantCacheSize(string $tenantId): string
+    {
+        try {
+            $prefix = config('cache.prefix')."tenant_{$tenantId}_";
+
+            switch (config('cache.default')) {
+                case 'database':
+                    $result = DB::table('cache')
+                        ->where('key', 'like', $prefix.'%')
+                        ->selectRaw('SUM(LENGTH(value)) as total_size')
+                        ->first();
+
+                    $sizeBytes = $result->total_size ?? 0;
+
+                    return $this->formatBytes($sizeBytes);
+
+                case 'file':
+                    // For file cache, estimate size of tenant-specific cache files
+                    $cachePath = storage_path('framework/cache/data');
+                    if (! is_dir($cachePath)) {
+                        return '0 B';
+                    }
+
+                    $totalSize = 0;
+                    $iterator = new \RecursiveIteratorIterator(
+                        new \RecursiveDirectoryIterator($cachePath, \RecursiveDirectoryIterator::SKIP_DOTS)
+                    );
+
+                    foreach ($iterator as $file) {
+                        if ($file->isFile() && str_contains($file->getFilename(), md5($prefix))) {
+                            $totalSize += $file->getSize();
+                        }
+                    }
+
+                    return $this->formatBytes($totalSize);
+
+                default:
+                    return 'N/A';
+            }
+        } catch (\Exception $e) {
+            return 'N/A';
+        }
+    }
+
+    /**
+     * Format bytes into human readable format
+     */
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes === 0) {
+            return '0 B';
+        }
+
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $unitIndex = floor(log($bytes, 1024));
+        $size = round($bytes / pow(1024, $unitIndex), 2);
+
+        return $size.' '.$units[$unitIndex];
+    }
+
+    /**
+     * Get tenant-specific cache hit rate
+     */
+    private function getTenantHitRate(string $tenantId): string
+    {
+        try {
+            // Get tenant-specific hit/miss statistics from cache
+            $statsKey = "tenant_{$tenantId}_cache_stats";
+            $stats = Cache::get($statsKey, ['hits' => 0, 'misses' => 0]);
+
+            $totalRequests = $stats['hits'] + $stats['misses'];
+
+            if ($totalRequests === 0) {
+                return 'N/A';
+            }
+
+            $hitRate = round(($stats['hits'] / $totalRequests) * 100, 1);
+
+            return (string) $hitRate;
+        } catch (\Exception $e) {
+            return 'N/A';
+        }
+    }
+
+    /**
+     * Get tenant cache health status
+     */
+    private function getTenantCacheHealth(string $tenantId): string
+    {
+        try {
+            $keyCount = $this->getTenantCacheKeyCount($tenantId);
+            $cacheDriver = config('cache.default');
+
+            // Basic health check based on key count and driver
+            if ($cacheDriver === 'array') {
+                return 'limited'; // Array cache is ephemeral
+            }
+
+            if ($keyCount > 10000) {
+                return 'warning'; // Too many keys might indicate memory issues
+            }
+
+            if ($keyCount > 0) {
+                return 'healthy'; // Cache is being used
+            }
+
+            return 'empty'; // No cache data
+        } catch (\Exception $e) {
+            return 'unknown';
+        }
+    }
+
+    /**
+     * Track a cache hit for tenant-specific statistics
+     */
+    public function trackCacheHit(string $tenantId): void
+    {
+        try {
+            $statsKey = "tenant_{$tenantId}_cache_stats";
+            $stats = Cache::get($statsKey, ['hits' => 0, 'misses' => 0]);
+            $stats['hits']++;
+
+            // Store stats for 24 hours
+            Cache::put($statsKey, $stats, now()->addDay());
+        } catch (\Exception $e) {
+            // Silently fail to avoid breaking cache operations
+        }
+    }
+
+    /**
+     * Track a cache miss for tenant-specific statistics
+     */
+    public function trackCacheMiss(string $tenantId): void
+    {
+        try {
+            $statsKey = "tenant_{$tenantId}_cache_stats";
+            $stats = Cache::get($statsKey, ['hits' => 0, 'misses' => 0]);
+            $stats['misses']++;
+
+            // Store stats for 24 hours
+            Cache::put($statsKey, $stats, now()->addDay());
+        } catch (\Exception $e) {
+            // Silently fail to avoid breaking cache operations
+        }
+    }
+}

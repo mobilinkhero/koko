@@ -1,0 +1,20 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Modules\{{ name }}\Http\Controllers\{{ name }}Controller;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your module. These
+| routes are loaded by the ServiceProvider.
+|
+*/
+
+Route::middleware('web')->group(function () {
+    Route::prefix('{{ name }}')->group(function () {
+        Route::get('/', [{{ name }}Controller::class, 'index'])->name('{{ name }}.index');
+    });
+});

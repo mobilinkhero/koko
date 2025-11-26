@@ -1,0 +1,20 @@
+{
+    "name": "CacheManager",
+    "alias": "cache-manager",
+    "namespace": "Modules\\CacheManager\\",
+    "provider": "Modules\\CacheManager\\Providers\\CacheManagerServiceProvider",
+    "author": "Corbital Technologies",
+    "url": "https://codecanyon.net/user/corbitaltech",
+    "version": "1.0.0",
+    "description": "The CacheManager Module",
+    "keywords": [],
+    "order": 0,
+    "providers": [
+        "Modules\\CacheManager\\Providers\\CacheManagerServiceProvider",
+        "Modules\\CacheManager\\Providers\\CacheOptimizationServiceProvider"
+    ],
+    "aliases": [],
+    "require": [],
+    "conflicts": [],
+    "type": "core"
+}

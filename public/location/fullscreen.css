@@ -1,0 +1,36 @@
+.fullscreen-icon {
+   background-image:url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M10 15H15V10H13.2V13.2H10V15ZM6 15V13.2H2.8V10H1V15H6ZM10 2.8H12.375H13.2V6H15V1H10V2.8ZM6 1V2.8H2.8V6H1V1H6Z' fill='%23000000'/%3E%3C/svg%3E"); 
+}
+.leaflet-retina .fullscreen-icon {
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill-rule='evenodd' clip-rule='evenodd' d='M10 15H15V10H13.2V13.2H10V15ZM6 15V13.2H2.8V10H1V15H6ZM10 2.8H12.375H13.2V6H15V1H10V2.8ZM6 1V2.8H2.8V6H1V1H6Z' fill='%23000000'/%3E%3C/svg%3E"); 
+    background-size: 26px 26px;
+}
+/* one selector per rule as explained here : http://www.sitepoint.com/html5-full-screen-api/ */
+.leaflet-container:-webkit-full-screen {
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 99999;
+}
+.leaflet-container:-ms-fullscreen {
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 99999;
+}
+.leaflet-container:full-screen {
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 99999;
+}
+.leaflet-container:fullscreen {
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 99999;
+}
+.leaflet-pseudo-fullscreen {
+    position: fixed !important;
+    width: 100% !important;
+    height: 100% !important;
+    top: 0px !important;
+    left: 0px !important;
+    z-index: 99999;
+}

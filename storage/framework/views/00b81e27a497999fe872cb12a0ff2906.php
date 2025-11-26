@@ -1,0 +1,4 @@
+<svg x-bind:data-tippy-content="isCollapsed ? 'Subscription' : null" x-bind:data-tippy-placement="isCollapsed ? 'right' : null" aria-hidden="true" class="mr-4 flex-shrink-0 h-6 w-6
+                                                text-gray-500 group-hover:text-primary-700 dark:text-slate-400 group-hover:dark:text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Z"/>
+</svg><?php /**PATH /home/adphwiudpl/mark.chatvoo.com/storage/framework/views/80d00ae6478297ac9602eb65421d575b.blade.php ENDPATH**/ ?>

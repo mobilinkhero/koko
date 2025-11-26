@@ -1,0 +1,48 @@
+```
+corbital-module-manager/
+├── composer.json
+├── config/
+│   └── module.php
+├── database/
+│   └── migrations/
+│       └── 2023_01_01_000000_create_module_settings_table.php
+├── resources/
+│   ├── views/
+│   │   ├── index.blade.php
+│   │   ├── show.blade.php
+│   │   ├── upload.blade.php
+│   │   └── livewire/
+│   │       └── module-list.blade.php
+│   ├── js/
+│   └── css/
+├── routes/
+│   └── web.php
+├── src/
+│   ├── Console/
+│   │   └── Commands/
+│   │       ├── ModuleActivateCommand.php
+│   │       ├── ModuleDeactivateCommand.php
+│   │       ├── ModuleListCommand.php
+│   │       ├── ModuleMakeCommand.php
+│   │       └── ModuleRemoveCommand.php
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   └── ModuleController.php
+│   │   └── Livewire/
+│   │       └── ModuleList.php
+│   ├── Providers/
+│   │   └── ModuleManagerServiceProvider.php
+│   ├── Services/
+│   │   ├── ModuleManager.php
+│   │   ├── ModuleEventManager.php
+│   │   └── SemVerParser.php
+│   ├── Support/
+│   │   ├── Module.php
+│   │   └── helpers.php
+│   └── Facades/
+│       ├── ModuleManager.php
+│       ├── ModuleEvents.php
+│       └── SemVer.php
+├── README.md
+└── LICENSE.md
+```

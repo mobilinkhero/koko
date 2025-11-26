@@ -1,0 +1,3 @@
+<svg x-show="!expanded" class="h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" data-slot="icon">
+  <path fill-rule="evenodd" d="M12.53 16.28a.75.75 0 0 1-1.06 0l-7.5-7.5a.75.75 0 0 1 1.06-1.06L12 14.69l6.97-6.97a.75.75 0 1 1 1.06 1.06l-7.5 7.5Z" clip-rule="evenodd"/>
+</svg><?php /**PATH /home/ahtisham/app.chatvoo.com/storage/framework/views/57963c8153d8c36da626b86185f0fc80.blade.php ENDPATH**/ ?>

@@ -1,0 +1,49 @@
+{
+    "name": "corbital/module-manager",
+    "description": "Enhanced module management system for Laravel extending nwidart/laravel-modules",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Corbital Team",
+            "email": "info@example.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/console": "^11.0|^12.0",
+        "illuminate/filesystem": "^11.0|^12.0",
+        "nwidart/laravel-modules": "^12.0",
+        "livewire/livewire": "^3.0"
+    },
+    "require-dev": {},
+    "autoload": {
+        "psr-4": {
+            "Corbital\\ModuleManager\\": "src/"
+        },
+        "files": [
+            "src/Support/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Corbital\\ModuleManager\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Corbital\\ModuleManager\\Providers\\ModuleManagerServiceProvider"
+            ],
+            "aliases": {
+                "ModuleManager": "Corbital\\ModuleManager\\Facades\\ModuleManager",
+                "ModuleEvents": "Corbital\\ModuleManager\\Facades\\ModuleEvents",
+                "ModuleHooks": "Corbital\\ModuleManager\\Facades\\ModuleHooks",
+                "SemVer": "Corbital\\ModuleManager\\Facades\\SemVer"
+            }
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

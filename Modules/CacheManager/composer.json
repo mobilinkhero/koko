@@ -1,0 +1,24 @@
+{
+    "name": "app/cachemanager",
+    "description": "CacheManager module for application",
+    "type": "laravel-module",
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your.email@example.com"
+        }
+    ],
+    "require": {},
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Modules\\CacheManager\\Providers\\CacheManagerServiceProvider"
+            ]
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\CacheManager\\": ""
+        }
+    }
+}

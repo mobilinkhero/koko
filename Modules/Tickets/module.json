@@ -1,0 +1,19 @@
+{
+    "name": "Tickets",
+    "alias": "tickets",
+    "namespace": "Modules\\Tickets\\",
+    "provider": "Modules\\Tickets\\Providers\\TicketsServiceProvider",
+    "author": "Corbital Technologies",
+    "url": "https://codecanyon.net/user/corbitaltech",
+    "version": "1.0.0",
+    "description": "The Tickets Module",
+    "keywords": [],
+    "order": 0,
+    "providers": [
+        "Modules\\Tickets\\Providers\\TicketsServiceProvider"
+    ],
+    "aliases": [],
+    "require": [],
+    "conflicts": [],
+    "type": "core"
+}

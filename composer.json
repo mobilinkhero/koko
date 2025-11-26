@@ -1,0 +1,179 @@
+{
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "laravel/laravel",
+    "type": "project",
+    "description": "The skeleton application for the Laravel framework.",
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.3",
+        "blade-ui-kit/blade-heroicons": "^2.6",
+        "blade-ui-kit/blade-icons": "^1.8",
+        "codeat3/blade-carbon-icons": "^2.34",
+        "corbital/installer": "*@dev",
+        "corbital/laravel-emails": "*@dev",
+        "corbital/module-manager": "@dev",
+        "corbital/settings": "*@dev",
+        "dompdf/dompdf": "^3.1",
+        "endroid/qr-code": "^6.0",
+        "ezyang/htmlpurifier": "^4.18",
+        "google/apiclient": "*",
+        "knuckleswtf/scribe": "^5.2",
+        "laravel/framework": "^12.0",
+        "laravel/tinker": "^2.10.1",
+        "league/csv": "^9.23",
+        "livewire/livewire": "^3.6",
+        "mhmiton/laravel-modules-livewire": "^5.1",
+        "millat/laravel-hooks": "^1.4",
+        "mokhosh/filament-kanban": "^2.11",
+        "netflie/whatsapp-cloud-api": "^2.2",
+        "nwidart/laravel-modules": "^12.0",
+        "openspout/openspout": "^4.28",
+        "power-components/livewire-powergrid": "^6.2",
+        "predis/predis": "^3.2",
+        "pusher/pusher-php-server": "^7.2",
+        "razorpay/razorpay": "^2.9",
+        "spatie/laravel-multitenancy": "^4.0",
+        "spatie/laravel-permission": "^6.17",
+        "stevebauman/purify": "^6.3",
+        "stripe/stripe-php": "^17.2",
+        "theodo-group/llphant": "^0.9.9"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "./platform/packages/corbital/laravel-settings",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "./platform/packages/corbital/module-manager",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "./platform/packages/corbital/laravel-emails",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "./platform/packages/corbital/installer",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
+    "require-dev": {
+        "barryvdh/laravel-debugbar": "^3.15",
+        "barryvdh/laravel-ide-helper": "^3.5",
+        "fakerphp/faker": "^1.23",
+        "laravel/boost": "^1.0",
+        "laravel/breeze": "^2.3",
+        "laravel/pail": "^1.2.2",
+        "laravel/pint": "^1.13",
+        "laravel/sail": "^1.41",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.6",
+        "nunomaduro/larastan": "^3.4",
+        "pestphp/pest": "^3.7",
+        "pestphp/pest-plugin-laravel": "^3.1",
+        "phpstan/phpstan": "*",
+        "phpstan/phpstan-deprecation-rules": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Modules\\": "Modules/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        },
+        "files": [
+            "app/Helpers/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
+            "@php artisan vendor:publish --tag=livewire:assets --ansi --force",
+            "@php artisan ide-helper:generate"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@php artisan migrate --graceful --ansi"
+        ],
+        "dev": [
+            "Composer\\Config::disableProcessTimeout",
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve --port=8080\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite"
+        ],
+        "clear-all": [
+            "@php artisan clear-compiled",
+            "@php artisan cache:clear",
+            "@php artisan route:clear",
+            "@php artisan view:clear",
+            "@php artisan config:clear",
+            "@php artisan icons:cache"
+        ],
+        "pint": "./vendor/bin/pint",
+        "analyse": "phpstan analyse --configuration=phpstan.neon  --memory-limit=1G > phpstan-report.txt",
+        "analyse-fix": "phpstan analyse --configuration=phpstan.neon --memory-limit=1G --error-format=table --no-progress --no-interaction --fix",
+        "analyse-baseline": "phpstan analyse --configuration=phpstan.neon --memory-limit=1G --error-format=table --no-progress --no-interaction --generate-baseline",
+        "analyse-baseline-fix": "phpstan analyse --configuration=phpstan.neon --memory-limit=1G --error-format=table --no-progress --no-interaction --generate-baseline --fix",
+        "lint": "pint",
+        "test": "pest"
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        },
+        "merge-plugin": {
+            "include": [
+                "./platform/packages/*/composer.json",
+                "Modules/*/composer.json"
+            ],
+            "recurse": false,
+            "replace": false,
+            "ignore-duplicates": false,
+            "merge-dev": false,
+            "merge-extra": false,
+            "merge-extra-deep": false,
+            "merge-scripts": false
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "8.3.0"
+        },
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true,
+            "wikimedia/composer-merge-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

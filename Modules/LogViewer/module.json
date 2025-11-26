@@ -1,0 +1,19 @@
+{
+    "name": "LogViewer",
+    "alias": "log-viewer",
+    "namespace": "Modules\\LogViewer\\",
+    "provider": "Modules\\LogViewer\\Providers\\LogViewerServiceProvider",
+    "author": "Corbital Technologies",
+    "url": "https://codecanyon.net/user/corbitaltech",
+    "version": "1.0.0",
+    "description": "The LogViewer Module",
+    "keywords": [],
+    "order": 0,
+    "providers": [
+        "Modules\\LogViewer\\Providers\\LogViewerServiceProvider"
+    ],
+    "aliases": [],
+    "require": [],
+    "conflicts": [],
+    "type": "core"
+}

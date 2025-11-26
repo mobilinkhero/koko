@@ -1,0 +1,5 @@
+Plan Name,Monthly Price,Annual Price,Max Contacts,Messages Per Month,Team Members,AI Prompts,Features,Target Audience,Setup Fee,Support Level
+Starter,$29,$290,1000,5000,1,0,"WhatsApp API, Basic Templates, Contact Management, Basic Analytics","Small Businesses, Startups, Freelancers",$0,Email Support
+Professional,$79,$790,10000,25000,5,50,"Advanced Templates, Bot Builder, Campaigns, CSV Messaging, Advanced Analytics","Growing Businesses, E-commerce, Agencies",$0,Priority Support
+Enterprise,$199,$1990,Unlimited,100000,25,Unlimited,"AI Assistant, File Analysis, Advanced Automation, White-label, API Access","Large Corporations, Multi-location, Enterprise",$0,Dedicated Support
+Custom,Contact Us,Contact Us,Custom,Custom,Custom,Custom,"Full Customization, On-premise Options, Custom Integrations","Fortune 500, Government, Special Requirements",Custom,Premium Support

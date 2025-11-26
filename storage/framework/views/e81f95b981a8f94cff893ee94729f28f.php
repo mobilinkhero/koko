@@ -1,0 +1,2 @@
+<h1 class="text-xl font-semibold text-secondary-700 dark:text-secondary-300"><?php echo e($slot); ?></h1>
+<?php /**PATH /home/ahtisham/app.chatvoo.com/resources/views/components/settings-heading.blade.php ENDPATH**/ ?>

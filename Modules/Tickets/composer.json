@@ -1,0 +1,24 @@
+{
+    "name": "app/tickets",
+    "description": "Tickets module for application",
+    "type": "laravel-module",
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your.email@example.com"
+        }
+    ],
+    "require": {},
+    "extra": {
+        "laravel": {
+            "providers": [
+                "App\\Modules\\Tickets\\Providers\\TicketsServiceProvider"
+            ]
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\Modules\\Tickets\\": ""
+        }
+    }
+}

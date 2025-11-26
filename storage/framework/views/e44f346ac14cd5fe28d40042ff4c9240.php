@@ -1,0 +1,4 @@
+<svg data-tippy-content="Custom Fields" data-tippy-placement="right" aria-hidden="true" class="mr-4 flex-shrink-0 h-6 w-6
+                                                        text-gray-500 group-hover:text-primary-700 dark:text-slate-400 group-hover:dark:text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M6 13.5V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m12-3V3.75m0 9.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 3.75V16.5m-6-9V3.75m0 3.75a1.5 1.5 0 0 1 0 3m0-3a1.5 1.5 0 0 0 0 3m0 9.75V10.5"/>
+</svg><?php /**PATH /home/adphwiudpl/mark.chatvoo.com/storage/framework/views/ea05d214f373e88306f7604685a8efb6.blade.php ENDPATH**/ ?>

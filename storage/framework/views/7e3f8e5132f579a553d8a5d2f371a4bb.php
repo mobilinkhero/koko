@@ -1,0 +1,3 @@
+<svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" data-slot="icon">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5"/>
+</svg><?php /**PATH /var/www/vhosts/projectnow.run.place/httpdocs/storage/framework/views/f16f69b165e5382535fc2fddb0808f62.blade.php ENDPATH**/ ?>

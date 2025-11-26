@@ -1,0 +1,19 @@
+[
+	"temp_components/nodes/AIAssistantNode.vue",
+	"temp_components/nodes/ButtonMessageNode.vue",
+	"temp_components/nodes/CallToActionNode.vue",
+	"temp_components/nodes/ConditionNode.vue",
+	"temp_components/nodes/ContactMessageNode.vue",
+	"temp_components/nodes/ListMessageNode.vue",
+	"temp_components/nodes/LocationMessageNode.vue",
+	"temp_components/nodes/MediaMessageNode.vue",
+	"temp_components/nodes/ReactionMessageNode.vue",
+	"temp_components/nodes/TemplateMessageNode.vue",
+	"temp_components/nodes/TextMessageNode.vue",
+	"temp_components/nodes/TriggerNode.vue",
+	"temp_components/ui/CustomEdge.vue",
+	"temp_components/BotFlowBuilder.vue",
+	"resources/js/dynamic-template/components/TemplateEditor.vue",
+    "resources/js/dynamic-template/components/WhatsAppPreview.vue",
+    "resources/js/dynamic-template/components/WhatsAppTemplateManager.vue"
+]

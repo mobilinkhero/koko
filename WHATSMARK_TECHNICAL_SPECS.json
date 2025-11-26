@@ -1,0 +1,171 @@
+{
+  "platform": {
+    "name": "WhatsMark",
+    "version": "2024.11",
+    "architecture": "Multi-tenant SaaS",
+    "framework": "Laravel 12",
+    "frontend": "Vue.js 3 + Livewire",
+    "database": "MySQL 8.0",
+    "cache": "Redis",
+    "queue": "Laravel Queues"
+  },
+  "ai_models": {
+    "available": [
+      {
+        "name": "GPT-3.5 Turbo",
+        "context_window": 4096,
+        "cost_per_1k_tokens": 0.002,
+        "speed": "Fast",
+        "use_case": "General purpose, cost-effective"
+      },
+      {
+        "name": "GPT-4",
+        "context_window": 8192,
+        "cost_per_1k_tokens": 0.03,
+        "speed": "Medium",
+        "use_case": "Complex reasoning, high accuracy"
+      },
+      {
+        "name": "GPT-4o Mini",
+        "context_window": 16384,
+        "cost_per_1k_tokens": 0.00015,
+        "speed": "Very Fast",
+        "use_case": "High-volume, cost-sensitive applications"
+      }
+    ]
+  },
+  "supported_file_formats": {
+    "documents": {
+      "txt": {
+        "max_size": "5MB",
+        "processing": "Direct text extraction",
+        "use_cases": ["FAQs", "Policies", "Procedures"]
+      },
+      "md": {
+        "max_size": "5MB",
+        "processing": "Markdown parsing with structure",
+        "use_cases": ["Documentation", "Guides", "Articles"]
+      },
+      "csv": {
+        "max_size": "5MB",
+        "processing": "Structured data analysis",
+        "use_cases": ["Pricing", "Inventory", "Contact Lists", "Reports"]
+      },
+      "json": {
+        "max_size": "5MB",
+        "processing": "Hierarchical data parsing",
+        "use_cases": ["API responses", "Configuration files", "Structured data"]
+      }
+    }
+  },
+  "integrations": {
+    "whatsapp": {
+      "provider": "Meta WhatsApp Business API",
+      "features": ["Text Messages", "Media Messages", "Templates", "Interactive Messages"],
+      "webhook_support": true,
+      "rate_limits": {
+        "messages_per_second": 100,
+        "messages_per_day": 100000
+      }
+    },
+    "payment_gateways": [
+      {
+        "name": "Stripe",
+        "supported_countries": 40,
+        "currencies": ["USD", "EUR", "GBP", "CAD"],
+        "features": ["Subscriptions", "One-time payments", "Webhooks"]
+      },
+      {
+        "name": "Razorpay",
+        "supported_countries": ["India"],
+        "currencies": ["INR"],
+        "features": ["UPI", "Net Banking", "Wallets", "Cards"]
+      },
+      {
+        "name": "PayPal",
+        "supported_countries": 200,
+        "currencies": ["USD", "EUR", "GBP"],
+        "features": ["Express Checkout", "Subscriptions"]
+      }
+    ]
+  },
+  "security": {
+    "encryption": {
+      "data_at_rest": "AES-256",
+      "data_in_transit": "TLS 1.3",
+      "message_encryption": "End-to-end"
+    },
+    "compliance": [
+      "GDPR",
+      "SOC 2 Type II",
+      "ISO 27001",
+      "HIPAA Ready"
+    ],
+    "authentication": {
+      "methods": ["Email/Password", "Two-Factor Authentication", "SSO"],
+      "session_timeout": "24 hours",
+      "password_requirements": "8+ chars, mixed case, numbers, symbols"
+    }
+  },
+  "performance": {
+    "uptime_sla": "99.9%",
+    "response_time": {
+      "api_calls": "< 200ms",
+      "message_delivery": "< 3 seconds",
+      "ai_response": "< 5 seconds"
+    },
+    "scalability": {
+      "max_concurrent_users": 10000,
+      "max_messages_per_minute": 50000,
+      "max_contacts_per_tenant": "Unlimited"
+    }
+  },
+  "support": {
+    "channels": ["Live Chat", "Email", "WhatsApp", "Phone"],
+    "hours": {
+      "starter": "Business Hours (9 AM - 6 PM)",
+      "professional": "Extended Hours (7 AM - 10 PM)",
+      "enterprise": "24/7"
+    },
+    "response_times": {
+      "starter": "24 hours",
+      "professional": "4 hours",
+      "enterprise": "1 hour"
+    }
+  },
+  "api": {
+    "version": "v1",
+    "authentication": "Bearer Token",
+    "rate_limiting": {
+      "requests_per_minute": 1000,
+      "requests_per_hour": 50000
+    },
+    "endpoints": {
+      "messages": "/api/v1/messages",
+      "contacts": "/api/v1/contacts",
+      "campaigns": "/api/v1/campaigns",
+      "templates": "/api/v1/templates",
+      "analytics": "/api/v1/analytics"
+    }
+  },
+  "testing_scenarios": {
+    "basic_setup": [
+      "Create tenant account",
+      "Connect WhatsApp Business API",
+      "Import contact list",
+      "Send first message"
+    ],
+    "ai_assistant_tests": [
+      "Upload FAQ document",
+      "Test product inquiry responses",
+      "Verify CSV data lookups",
+      "Check multilingual support"
+    ],
+    "automation_tests": [
+      "Create message bot",
+      "Set up campaign flows",
+      "Test trigger conditions",
+      "Verify delivery tracking"
+    ]
+  }
+}

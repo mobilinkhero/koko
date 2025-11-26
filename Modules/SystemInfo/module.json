@@ -1,0 +1,19 @@
+{
+    "name": "SystemInfo",
+    "alias": "system-info",
+    "namespace": "Modules\\SystemInfo\\",
+    "provider": "Modules\\SystemInfo\\Providers\\SystemInfoServiceProvider",
+    "author": "Corbital Technologies",
+    "url": "https://codecanyon.net/user/corbitaltech",
+    "version": "1.0.0",
+    "description": "The SystemInfo Module",
+    "keywords": [],
+    "order": 0,
+    "providers": [
+        "Modules\\SystemInfo\\Providers\\SystemInfoServiceProvider"
+    ],
+    "aliases": [],
+    "require": [],
+    "conflicts": [],
+    "type": "core"
+}

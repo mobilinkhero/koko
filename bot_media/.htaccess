@@ -1,0 +1,36 @@
+# Allow access to media files
+<Files "*.jpg">
+    Allow from all
+</Files>
+<Files "*.jpeg">
+    Allow from all
+</Files>
+<Files "*.png">
+    Allow from all
+</Files>
+<Files "*.gif">
+    Allow from all
+</Files>
+<Files "*.mp4">
+    Allow from all
+</Files>
+<Files "*.mp3">
+    Allow from all
+</Files>
+<Files "*.pdf">
+    Allow from all
+</Files>
+<Files "*.doc">
+    Allow from all
+</Files>
+<Files "*.docx">
+    Allow from all
+</Files>
+
+# Prevent access to PHP files
+<Files "*.php">
+    Deny from all
+</Files>
+
+# Prevent directory browsing
+Options -Indexes

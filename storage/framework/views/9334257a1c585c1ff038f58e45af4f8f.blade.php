@@ -1,0 +1,1 @@
+<x-select-status type="occurrence" :options="$options" :userId="$userId" :selected="$selected"/>

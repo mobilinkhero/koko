@@ -1,0 +1,278 @@
+WhatsMark Personal AI Assistant - Complete Testing Guide
+=========================================================
+
+TESTING OVERVIEW
+================
+
+This guide provides comprehensive testing scenarios for the WhatsMark Personal AI Assistant system. Use the provided demo files to thoroughly test all AI capabilities.
+
+TEST FILES PROVIDED
+==================
+
+1. WHATSMARK_SERVICES_DEMO.md - Main service documentation (Markdown)
+2. WHATSMARK_PRICING_DEMO.csv - Pricing and plan data (CSV)
+3. WHATSMARK_TECHNICAL_SPECS.json - Technical specifications (JSON)
+4. AI_ASSISTANT_TESTING_GUIDE.txt - This testing guide (Text)
+
+STEP-BY-STEP TESTING PROCESS
+============================
+
+PHASE 1: BASIC SETUP (5 minutes)
+--------------------------------
+
+1. Navigate to /{subdomain}/ai-assistant
+2. Click "Create New Assistant"
+3. Fill in basic information:
+   - Name: "WhatsMark Demo Assistant"
+   - Description: "Complete business support AI for testing"
+   - Use Cases: Select all (FAQ, Product, Onboarding, CSV, SOP)
+
+4. Configure AI settings:
+   - Model: GPT-4o Mini (recommended for testing)
+   - Temperature: 0.7 (balanced creativity)
+   - Max Tokens: 1000 (good for detailed responses)
+
+5. Add system instructions:
+   "You are a helpful WhatsMark customer support assistant. Use the uploaded documents to provide accurate information about our services, pricing, and technical specifications. Always be professional and helpful."
+
+PHASE 2: DOCUMENT UPLOAD (10 minutes)
+-------------------------------------
+
+1. Upload all test files:
+   - Drag and drop WHATSMARK_SERVICES_DEMO.md
+   - Upload WHATSMARK_PRICING_DEMO.csv
+   - Add WHATSMARK_TECHNICAL_SPECS.json
+   - Include AI_ASSISTANT_TESTING_GUIDE.txt
+
+2. Wait for processing (should take 30-60 seconds)
+
+3. Verify uploads:
+   - Check file count shows 4 files
+   - Verify total character count is displayed
+   - Ensure no error messages appear
+
+PHASE 3: BASIC FUNCTIONALITY TESTS (15 minutes)
+-----------------------------------------------
+
+Test Category: GENERAL INFORMATION
+----------------------------------
+
+Test Query 1: "What is WhatsMark?"
+Expected Response: Should explain WhatsMark as a WhatsApp Business API platform with automation and AI features.
+
+Test Query 2: "What services do you offer?"
+Expected Response: Should list main services including WhatsApp integration, bot flows, campaigns, and AI assistant.
+
+Test Query 3: "How can WhatsMark help my business?"
+Expected Response: Should provide specific benefits like improved response times, automation, and customer satisfaction.
+
+Test Category: PRICING INQUIRIES
+--------------------------------
+
+Test Query 4: "What are your pricing plans?"
+Expected Response: Should list Starter ($29), Professional ($79), Enterprise ($199), and Custom plans with key features.
+
+Test Query 5: "How much does the Professional plan cost?"
+Expected Response: Should specify $79/month or $790/year with Professional plan features.
+
+Test Query 6: "What's included in the Enterprise plan?"
+Expected Response: Should mention AI Assistant, unlimited contacts, 100K messages, 25 team members, etc.
+
+Test Query 7: "Do you have any setup fees?"
+Expected Response: Should confirm no setup fees for standard plans, free migration assistance.
+
+PHASE 4: ADVANCED AI TESTING (20 minutes)
+-----------------------------------------
+
+Test Category: CSV DATA LOOKUPS
+------------------------------
+
+Test Query 8: "How many contacts can I have on the Starter plan?"
+Expected Response: Should extract "1,000 contacts" from CSV data.
+
+Test Query 9: "What's the difference between Professional and Enterprise messaging limits?"
+Expected Response: Should compare 25,000 vs 100,000 messages per month from CSV.
+
+Test Query 10: "Which plan includes AI prompts?"
+Expected Response: Should identify Professional (50/month) and Enterprise (unlimited) from CSV.
+
+Test Category: TECHNICAL SPECIFICATIONS
+---------------------------------------
+
+Test Query 11: "What AI models do you support?"
+Expected Response: Should list GPT-3.5 Turbo, GPT-4, and GPT-4o Mini with their specifications from JSON.
+
+Test Query 12: "What file formats can I upload?"
+Expected Response: Should specify TXT, MD, CSV, JSON with 5MB limit from JSON data.
+
+Test Query 13: "What's your uptime guarantee?"
+Expected Response: Should mention 99.9% uptime SLA from JSON specifications.
+
+Test Category: INTEGRATION QUESTIONS
+------------------------------------
+
+Test Query 14: "What payment methods do you accept?"
+Expected Response: Should list Stripe, Razorpay, PayPal, Paystack from JSON data.
+
+Test Query 15: "Is the platform secure?"
+Expected Response: Should mention AES-256 encryption, GDPR compliance, SOC 2 from JSON.
+
+Test Query 16: "Do you have an API?"
+Expected Response: Should confirm API v1 with bearer token authentication and rate limits.
+
+PHASE 5: COMPLEX REASONING TESTS (15 minutes)
+---------------------------------------------
+
+Test Category: BUSINESS CONSULTATION
+-----------------------------------
+
+Test Query 17: "I have a small retail store with 500 customers, which plan should I choose?"
+Expected Response: Should recommend Starter plan based on contact count and business size.
+
+Test Query 18: "We're an enterprise with 50,000 contacts and need AI support, what do you suggest?"
+Expected Response: Should recommend Enterprise plan highlighting AI Assistant and unlimited contacts.
+
+Test Query 19: "How would WhatsMark help a real estate agency?"
+Expected Response: Should reference real estate section from markdown, mentioning property listings, lead qualification, etc.
+
+Test Category: IMPLEMENTATION GUIDANCE
+--------------------------------------
+
+Test Query 20: "How long does it take to get started?"
+Expected Response: Should mention 24-48 hours for basic setup, 3-5 days for Enterprise from markdown.
+
+Test Query 21: "What's involved in the onboarding process?"
+Expected Response: Should outline the 3-phase implementation process from markdown.
+
+Test Query 22: "Do you help with migration from other platforms?"
+Expected Response: Should confirm free migration assistance with data export, template recreation, etc.
+
+PHASE 6: ERROR HANDLING & EDGE CASES (10 minutes)
+-------------------------------------------------
+
+Test Category: UNKNOWN INFORMATION
+----------------------------------
+
+Test Query 23: "What's your office address?"
+Expected Response: Should politely state information not available in documents, suggest contacting support.
+
+Test Query 24: "Can you integrate with Salesforce?"
+Expected Response: Should mention custom integrations available but may not have specific Salesforce details.
+
+Test Query 25: "What's your cancellation policy?"
+Expected Response: Should check if mentioned in documents or indicate need for direct contact.
+
+Test Category: MULTILINGUAL TESTING
+-----------------------------------
+
+Test Query 26: "¿Cuáles son sus precios?" (Spanish)
+Expected Response: Should respond in Spanish with pricing information if AI model supports it.
+
+Test Query 27: "आपकी सेवाएं क्या हैं?" (Hindi)
+Expected Response: Should attempt to respond in Hindi or English with service information.
+
+PERFORMANCE BENCHMARKS
+======================
+
+Response Time Targets:
+- Simple queries (info lookup): < 3 seconds
+- Complex queries (reasoning): < 8 seconds
+- CSV lookups: < 5 seconds
+- JSON data retrieval: < 4 seconds
+
+Accuracy Targets:
+- Factual information: 95%+ accuracy
+- Pricing data: 100% accuracy
+- Technical specs: 100% accuracy
+- Business recommendations: 85%+ relevance
+
+COMMON ISSUES & TROUBLESHOOTING
+===============================
+
+Issue: "AI doesn't recognize uploaded files"
+Solution: Check file processing status, ensure files are under 5MB, verify supported formats.
+
+Issue: "Responses are too generic"
+Solution: Improve system instructions, add more specific business context, adjust temperature.
+
+Issue: "AI can't find CSV data"
+Solution: Verify CSV structure, check for proper headers, ensure data format is clear.
+
+Issue: "Responses are too long/short"
+Solution: Adjust max tokens setting, refine system instructions with length preferences.
+
+ADVANCED TESTING SCENARIOS
+==========================
+
+Scenario A: CUSTOMER SUPPORT SIMULATION
+---------------------------------------
+1. Create conversation flow simulating real customer inquiries
+2. Test follow-up questions and context retention
+3. Verify consistent brand voice throughout conversation
+4. Check handling of multiple topics in single conversation
+
+Scenario B: SALES QUALIFICATION
+------------------------------
+1. Test AI's ability to recommend appropriate plans
+2. Verify understanding of customer requirements
+3. Check upselling/cross-selling suggestions
+4. Validate ROI calculations and benefit explanations
+
+Scenario C: TECHNICAL SUPPORT
+----------------------------
+1. Ask complex technical questions about integrations
+2. Test troubleshooting guidance capabilities
+3. Verify API documentation references
+4. Check security and compliance explanations
+
+REPORTING & DOCUMENTATION
+=========================
+
+For each test phase, document:
+- Query asked
+- Response received
+- Response time
+- Accuracy rating (1-5)
+- Issues encountered
+- Suggestions for improvement
+
+Create summary report including:
+- Overall accuracy percentage
+- Average response time
+- Most/least effective query types
+- File processing success rate
+- Recommendations for optimization
+
+SUCCESS CRITERIA
+================
+
+✅ 90%+ of queries receive relevant responses
+✅ All pricing inquiries answered accurately
+✅ CSV/JSON data successfully retrieved
+✅ Technical specifications properly referenced
+✅ Business recommendations show understanding
+✅ Error handling graceful for unknown topics
+✅ Response times meet performance targets
+✅ File processing completes without errors
+
+NEXT STEPS AFTER TESTING
+========================
+
+1. Fine-tune system instructions based on results
+2. Optimize temperature and token settings
+3. Add more specific business documentation
+4. Create additional training data if needed
+5. Set up monitoring for production use
+6. Train team members on AI assistant capabilities
+
+SUPPORT CONTACTS
+================
+
+For testing support or questions:
+- Technical Issues: tech-support@whatsmark.com
+- Feature Requests: product@whatsmark.com
+- General Questions: help@whatsmark.com
+
+Remember: This AI Assistant represents the future of customer service automation. Thorough testing ensures optimal performance and customer satisfaction.
+
+Happy Testing! 🚀

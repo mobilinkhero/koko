@@ -1,0 +1,11 @@
+.deleted-tenant td {
+    @apply bg-red-50 dark:bg-red-900/10;
+}
+
+.deleted-tenant td:first-child {
+    @apply line-through;
+}
+
+.deleted-tenant td .status-badge {
+    @apply opacity-50;
+}
