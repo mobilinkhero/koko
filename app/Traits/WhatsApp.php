@@ -240,11 +240,15 @@ trait WhatsApp
                 }
 
                 $data = $response->json('data');
+                
+                // If no templates found, that's OK - not an error
+                // User might not have created any templates yet
                 if (!$data) {
-                    return [
-                        'status' => false,
-                        'message' => 'Message templates not found.',
-                    ];
+                    whatsapp_log('No message templates found for this account', 'info', [
+                        'account_id' => $accountId,
+                        'tenant_id' => $tenant_id,
+                    ], null, $tenant_id);
+                    break; // Exit the loop, continue with empty templates
                 }
 
                 $templates = array_merge($templates, $data);
@@ -367,6 +371,14 @@ trait WhatsApp
                 ], null, $tenant_id);
             }
 
+            // Generate appropriate success message
+            $templateCount = count($apiTemplateIds);
+            if ($templateCount === 0) {
+                $message = t('connection_successful_no_templates') ?? 'WhatsApp connected successfully! No message templates found. You can create templates in Meta Business Suite.';
+            } else {
+                $message = t('templates_synced_successfully') ?? "Successfully synced {$templateCount} message template(s).";
+            }
+
             return [
                 'status' => true,
                 'data' => $templates,
@@ -374,7 +386,7 @@ trait WhatsApp
                     'updated_or_created' => count($apiTemplateIds),
                     'deleted' => count($templatesForDeletion),
                 ],
-                'message' => t('templates_synced_successfully'),
+                'message' => $message,
             ];
         } catch (Throwable $e) {
             return $this->handleApiError($e, $e->getMessage() ?? '');
