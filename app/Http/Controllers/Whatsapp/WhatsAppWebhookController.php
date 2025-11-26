@@ -224,9 +224,48 @@ class WhatsAppWebhookController extends Controller
                 'timestamp' => microtime(true),
             ]);
 
-            // Process payload directly - no locking mechanism
-            $this->processPayloadData($payload);
-            $this->forwardWebhookData($feedData, $payload);
+            // PROTECTION 4: DATABASE LOCK (MySQL Named Lock)
+            // Use MySQL's GET_LOCK to handle parallel requests (race conditions)
+            // This is the "Database Way" to prevent processing the same message ID twice simultaneously
+            $lockKey = 'wa_msg_' . md5($message_id);
+            
+            // Try to acquire lock (0 timeout = return immediately if locked)
+            $lockResult = \Illuminate\Support\Facades\DB::select("SELECT GET_LOCK(?, 0) as locked", [$lockKey]);
+            
+            if (!$lockResult[0]->locked) {
+                $this->logDuplicateTracking('DUPLICATE_DB_LOCK_HELD', [
+                    'request_id' => $this->currentRequestId,
+                    'message_id' => $message_id,
+                    'reason' => 'Another process holds the database lock'
+                ]);
+                return;
+            }
+
+            // Double check DB existence just in case (for sequential duplicates)
+            $exists = \App\Models\Tenant\ChatMessage::fromTenant($this->tenant_subdoamin)
+                ->where('message_id', $message_id)
+                ->exists();
+
+            if ($exists) {
+                // Release lock since we won't process
+                \Illuminate\Support\Facades\DB::select("SELECT RELEASE_LOCK(?)", [$lockKey]);
+                
+                $this->logDuplicateTracking('DUPLICATE_DB_BLOCKED', [
+                    'request_id' => $this->currentRequestId,
+                    'message_id' => $message_id,
+                    'reason' => 'Message ID already exists in database'
+                ]);
+                return;
+            }
+
+            try {
+                // Process payload directly
+                $this->processPayloadData($payload);
+                $this->forwardWebhookData($feedData, $payload);
+            } finally {
+                // Always release the database lock
+                \Illuminate\Support\Facades\DB::select("SELECT RELEASE_LOCK(?)", [$lockKey]);
+            }
         }
     }
 
