@@ -30,15 +30,18 @@ class FlowList extends Component
 
     public $tenant_id;
 
-    public function mount()
+    public function mount(FeatureService $featureLimitChecker)
     {
+        $this->boot($featureLimitChecker);
+
         if (! checkPermission(['tenant.bot_flow.view', 'tenant.bot_flow.create'])) {
             $this->notify(['type' => 'danger', 'message' => t('access_denied_note')], true);
 
             return redirect(tenant_route('tenant.dashboard'));
         }
+        
+        // Initialize botFlow to prevent null reference errors
         $this->resetForm();
-        $this->botFlow = new BotFlow;
         $this->tenant_id = tenant_id();
     }
 
