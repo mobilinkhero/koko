@@ -1984,7 +1984,14 @@ class WhatsAppWebhookController extends Controller
                     'trigger_node_id' => $fallbackNode['id'],
                 ]);
 
-                return $this->executeFlowFromStart($fallbackFlow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
+                $result = $this->executeFlowFromStart($fallbackFlow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
+                
+                $this->logToDuplicateFile('Flow execution completed, RETURNING (fallback)', [
+                    'flow_id' => $fallbackFlow->id,
+                    'flow_name' => $fallbackFlow->name ?? 'Unknown',
+                ]);
+                
+                return $result;
             }
         }
 
@@ -2595,12 +2602,20 @@ class WhatsAppWebhookController extends Controller
             $connectedNodes = $this->findDirectlyConnectedNodes($triggerNode['id'], $flowData);
 
             if (!empty($connectedNodes)) {
+                $nodeDetails = array_map(function ($node) {
+                    return ['id' => $node['id'], 'type' => $node['type']];
+                }, $connectedNodes);
+                
+                $this->logToDuplicateFile('Found connected nodes for trigger', [
+                    'trigger_id' => $triggerNode['id'],
+                    'connected_count' => count($connectedNodes),
+                    'connected_nodes' => $nodeDetails,
+                ]);
+                
                 whatsapp_log('Found connected nodes for trigger', 'debug', [
                     'trigger_id' => $triggerNode['id'],
                     'connected_count' => count($connectedNodes),
-                    'connected_nodes' => array_map(function ($node) {
-                        return ['id' => $node['id'], 'type' => $node['type']];
-                    }, $connectedNodes),
+                    'connected_nodes' => $nodeDetails,
                 ]);
 
                 // Process connected nodes for this trigger
@@ -2759,9 +2774,22 @@ class WhatsAppWebhookController extends Controller
     {
         $nodeType = $node['type'];
         $nodeData = $node['data'] ?? [];
+        
+        // Log EVERY node being processed
+        $this->logToDuplicateFile('Processing node', [
+            'node_id' => $node['id'] ?? 'N/A',
+            'node_type' => $nodeType,
+            'is_ai_assistant' => ($nodeType === 'aiAssistant'),
+        ]);
 
         // Debug: Log full node data for AI Assistant nodes
         if ($nodeType === 'aiAssistant') {
+            $this->logToDuplicateFile('⚠️ AI ASSISTANT NODE EXECUTING', [
+                'node_id' => $node['id'] ?? 'N/A',
+                'assistant_mode' => $nodeData['assistantMode'] ?? 'unknown',
+                'selected_assistant_id' => $nodeData['selectedAssistantId'] ?? 'N/A',
+            ]);
+            
             \Log::info('AI Assistant Node - Full Node Data', [
                 'node_id' => $node['id'] ?? 'N/A',
                 'node_type' => $nodeType,
