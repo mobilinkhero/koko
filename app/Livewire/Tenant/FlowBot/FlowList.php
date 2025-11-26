@@ -49,22 +49,27 @@ class FlowList extends Component
 
     protected function rules()
     {
-        return [
-            'botFlow.name' => [
-                'required',
-                'unique:bot_flows,name,'.($this->botFlow->id ?? 'NULL').',id,tenant_id,'.tenant_id(),
-                new PurifiedInput(t('sql_injection_error')),
-                'max:150',
-            ],
-            'botFlow.description' => [
-                'nullable',
-                new PurifiedInput(t('sql_injection_error')),
-                'max:150',
-            ],
-        ];
+        return []; // No automatic Livewire validation - we'll handle manually
     }
     
+    /**
+     * Livewire hook: Called when botFlow.name is updated
+     */
+    public function updatedBotFlowName($value)
+    {
+        // Clear validation error for name field when user types
+        $this->resetErrorBag('botFlow.name');
+    }
     
+    /**
+     * Livewire hook: Called when botFlow.description is updated
+     */
+    public function updatedBotFlowDescription($value)
+    {
+        // Clear validation error for description field when user types
+        $this->resetErrorBag('botFlow.description');
+    }
+
     public function createBotFlow()
     {
         $this->resetForm();
@@ -74,7 +79,55 @@ class FlowList extends Component
 
     public function save()
     {
-        $this->validate();
+        // Debug: Log what we're working with
+        \Log::info('🔵 MANUAL VALIDATION START', [
+            'botFlow_name' => $this->botFlow->name,
+            'botFlow_name_type' => gettype($this->botFlow->name),
+            'botFlow_name_is_null' => is_null($this->botFlow->name),
+            'botFlow_name_is_empty' => empty($this->botFlow->name),
+            'botFlow_name_trimmed' => trim($this->botFlow->name ?? ''),
+            'botFlow_exists' => $this->botFlow->exists,
+            'botFlow_id' => $this->botFlow->id,
+        ]);
+        
+        // Manual validation to bypass Livewire's automatic validation
+        $errors = [];
+        
+        // Check name field
+        if (empty($this->botFlow->name) || trim($this->botFlow->name) === '') {
+            $errors['botFlow.name'] = 'The name field is required.';
+            \Log::info('🔴 NAME VALIDATION FAILED - Empty');
+        } else {
+            // Check unique constraint
+            $query = \App\Models\Tenant\BotFlow::where('name', trim($this->botFlow->name))
+                ->where('tenant_id', tenant_id());
+                
+            if ($this->botFlow->exists) {
+                $query->where('id', '!=', $this->botFlow->id);
+            }
+            
+            if ($query->exists()) {
+                $errors['botFlow.name'] = 'The name has already been taken.';
+            }
+            
+            // Check max length
+            if (strlen($this->botFlow->name) > 150) {
+                $errors['botFlow.name'] = 'The name may not be greater than 150 characters.';
+            }
+        }
+        
+        // Check description field
+        if (!empty($this->botFlow->description) && strlen($this->botFlow->description) > 150) {
+            $errors['botFlow.description'] = 'The description may not be greater than 150 characters.';
+        }
+        
+        // If there are errors, throw validation exception
+        if (!empty($errors)) {
+            \Log::info('🔴 VALIDATION FAILED WITH ERRORS', $errors);
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
+        
+        \Log::info('🟢 VALIDATION PASSED - SAVING BOT FLOW');
 
         $isNew = ! $this->botFlow->exists;
 
