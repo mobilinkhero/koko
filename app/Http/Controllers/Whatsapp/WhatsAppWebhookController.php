@@ -160,20 +160,50 @@ class WhatsAppWebhookController extends Controller
             // Check for message ID
             $message_id = $payload['entry'][0]['changes'][0]['value']['messages'][0]['id'] ?? '';
             $this->currentMessageId = $message_id;
+            
+            // 🛑 PROTECTION 1: DROP MESSAGES WITHOUT ID (Likely status updates or system messages)
+            if (empty($message_id)) {
+                // Do not process further, just log and exit
+                $this->logDuplicateTracking('DROPPED_NO_ID', [
+                    'request_id' => $this->currentRequestId,
+                    'reason' => 'Empty Message ID',
+                    'payload_preview' => substr(json_encode($payload), 0, 200)
+                ]);
+                return;
+            }
+
             $message_from = $payload['entry'][0]['changes'][0]['value']['messages'][0]['from'] ?? '';
             
-            // LOOP PREVENTION: Check if message is from ourselves (echo)
+            // 🛑 PROTECTION 2: ROBUST LOOP PREVENTION (Normalized numbers)
             // Get business phone number from metadata
             $metadata = $payload['entry'][0]['changes'][0]['value']['metadata'] ?? [];
             $business_phone = $metadata['display_phone_number'] ?? '';
             
+            // Normalize numbers (remove all non-digits)
+            $norm_business = preg_replace('/\D/', '', $business_phone);
+            $norm_sender = preg_replace('/\D/', '', $message_from);
+            
             // If sender matches business phone, IT'S A LOOP! Ignore it.
-            if (!empty($business_phone) && $message_from === $business_phone) {
+            if (!empty($norm_business) && !empty($norm_sender) && $norm_business === $norm_sender) {
                 $this->logDuplicateTracking('LOOP_PREVENTION', [
                     'request_id' => $this->currentRequestId,
                     'action' => 'SKIPPED - Message from self',
                     'from' => $message_from,
-                    'business_phone' => $business_phone
+                    'business_phone' => $business_phone,
+                    'normalized' => $norm_sender
+                ]);
+                return;
+            }
+
+            // 🛑 PROTECTION 3: IGNORE OLD MESSAGES (> 2 minutes)
+            $message_timestamp = $payload['entry'][0]['changes'][0]['value']['messages'][0]['timestamp'] ?? time();
+            if (time() - $message_timestamp > 120) {
+                $this->logDuplicateTracking('OLD_MESSAGE_SKIPPED', [
+                    'request_id' => $this->currentRequestId,
+                    'message_id' => $message_id,
+                    'msg_time' => $message_timestamp,
+                    'server_time' => time(),
+                    'diff' => time() - $message_timestamp
                 ]);
                 return;
             }
