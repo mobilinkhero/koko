@@ -162,10 +162,13 @@ class WhatsAppWebhookController extends Controller
             // This is the "Database Way" to prevent processing the same message ID twice simultaneously
             $lockKey = 'wa_msg_' . md5($message_id);
             
-            // Try to acquire lock (0 timeout = return immediately if locked)
-            $lockResult = \Illuminate\Support\Facades\DB::select("SELECT GET_LOCK(?, 0) as locked", [$lockKey]);
+            // Try to acquire lock (2 second timeout for live server with potential high load)
+            // If another process has the lock, this will WAIT up to 2 seconds
+            $lockResult = \Illuminate\Support\Facades\DB::select("SELECT GET_LOCK(?, 2) as locked", [$lockKey]);
             
-            if (!$lockResult[0]->locked) {
+            // Lock result: 1 = acquired, 0 = timeout, NULL = error
+            if (!$lockResult[0]->locked || $lockResult[0]->locked != 1) {
+                // Could not get lock - another request is processing this message
                 return;
             }
 
