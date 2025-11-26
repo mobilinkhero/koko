@@ -5,6 +5,7 @@ namespace App\Services;
 use Exception;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * WhatsApp Embedded Signup Service
@@ -249,9 +250,17 @@ class WhatsAppEmbeddedSignupService
     protected function setupWebhook(string $wabaId): array
     {
         try {
-            // Get webhook URL for this tenant
+            // Get webhook URL and verify token from settings
             $webhookUrl = route('whatsapp.webhook');
-            $verifyToken = sha1(config('app.key') . $this->tenantId);
+            
+            // Get the verify token from settings (same as webhook controller uses)
+            $verifyToken = get_setting('whatsapp', 'webhook_verify_token');
+            
+            // If no verify token is configured, generate and save one
+            if (empty($verifyToken)) {
+                $verifyToken = Str::random(32);
+                save_setting('whatsapp', 'webhook_verify_token', $verifyToken);
+            }
 
             // Subscribe to webhook
             $subscribeResponse = $this->apiPostRequest("{$wabaId}/subscribed_apps");
