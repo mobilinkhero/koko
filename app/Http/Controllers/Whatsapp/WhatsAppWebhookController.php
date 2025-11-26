@@ -460,6 +460,22 @@ class WhatsAppWebhookController extends Controller
                             ]);
                         }
 
+                        // ✅ FIX: Check if tenant has active flows - if yes, skip old message bot system
+                        // This prevents double responses when both old bots and new flows match the same trigger
+                        $hasActiveFlows = \App\Models\Tenant\BotFlow::where([
+                            'is_active' => 1,
+                            'tenant_id' => $this->tenant_id
+                        ])->exists();
+
+                        if ($hasActiveFlows) {
+                            whatsapp_log('Tenant has active flows, skipping old message bot system', 'info', [
+                                'tenant_id' => $this->tenant_id,
+                                'will_use_flow_system' => true,
+                            ]);
+                            // Skip to flow processing
+                            goto process_flows;
+                        }
+
                         // Fetch template and message bots based on interaction
                         $template_bots = TemplateBot::getTemplateBotsByRelType($contact_data->type ?? '', $query_trigger_msg, $this->tenant_id, $reply_type);
                         $message_bots = MessageBot::getMessageBotsbyRelType($contact_data->type ?? '', $query_trigger_msg, $this->tenant_id, $reply_type);
@@ -529,6 +545,11 @@ class WhatsAppWebhookController extends Controller
                 }
             }
         }
+
+        // Label for skipping old bot system when flows exist
+        process_flows:
+
+        // Process new flow system
         $this->processBotFlow($message_data);
     }
 
