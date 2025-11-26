@@ -123,26 +123,57 @@ class WhatsAppWebhookController extends Controller
             // Check for message ID to prevent duplicate processing
             $message_id = $payload['entry'][0]['changes'][0]['value']['messages'][0]['id'] ?? '';
             if (!empty($message_id)) {
-                // Check if message already processed (similar to original code)
-                $found = $this->checkMessageProcessed($message_id);
-                if ($found) {
-                    whatsapp_log(
-                        'Duplicate Message Detected',
-                        'warning',
-                        [
-                            'message_id' => $message_id,
-                        ]
-                    );
-
-                    return;
+                // Use cache lock to prevent race conditions from duplicate webhooks
+                $lock = \Illuminate\Support\Facades\Cache::lock('whatsapp_msg_' . $message_id, 10);
+                
+                try {
+                    // Try to acquire the lock (wait up to 2 seconds)
+                    if ($lock->block(2)) {
+                        // Check if message already processed
+                        $found = $this->checkMessageProcessed($message_id);
+                        if ($found) {
+                            whatsapp_log(
+                                'Duplicate Message Detected - Already Processed',
+                                'warning',
+                                [
+                                    'message_id' => $message_id,
+                                    'tenant_id' => $this->tenant_id,
+                                ]
+                            );
+                            $lock->release();
+                            return;
+                        }
+                        
+                        // Process the payload (lock will be released after)
+                        $this->processPayloadData($payload);
+                        
+                        // Forward webhook data if enabled (inside lock to prevent duplicates)
+                        $this->forwardWebhookData($feedData, $payload);
+                        
+                        // Release the lock after processing
+                        $lock->release();
+                    } else {
+                        // Could not acquire lock - another process is handling this message
+                        whatsapp_log(
+                            'Duplicate Message Detected - Currently Being Processed',
+                            'warning',
+                            [
+                                'message_id' => $message_id,
+                                'tenant_id' => $this->tenant_id,
+                            ]
+                        );
+                        return;
+                    }
+                } catch (\Exception $e) {
+                    // Make sure lock is released even on error
+                    $lock->release();
+                    throw $e;
                 }
+            } else {
+                // No message ID (status updates, etc.) - process normally
+                $this->processPayloadData($payload);
+                $this->forwardWebhookData($feedData, $payload);
             }
-
-            // Process the payload
-            $this->processPayloadData($payload);
-
-            // Forward webhook data if enabled
-            $this->forwardWebhookData($feedData, $payload);
         }
     }
 
