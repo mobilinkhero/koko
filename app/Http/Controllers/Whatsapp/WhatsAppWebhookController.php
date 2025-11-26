@@ -42,6 +42,36 @@ class WhatsAppWebhookController extends Controller
     protected $ecommerceHandledMessage = false;
 
     /**
+     * Log to dedicated duplicate tracking file
+     */
+    private function logDuplicateTracking($stage, $data = [])
+    {
+        $logFile = storage_path('logs/whatsappmessageduplicate.log');
+        $timestamp = date('Y-m-d H:i:s');
+        $requestId = $data['request_id'] ?? uniqid('req_');
+        
+        $logEntry = [
+            'timestamp' => $timestamp,
+            'request_id' => $requestId,
+            'stage' => $stage,
+            'tenant_id' => $this->tenant_id ?? 'unknown',
+            'data' => $data
+        ];
+        
+        $logLine = sprintf(
+            "[%s] [%s] [STAGE: %s] [TENANT: %s]\n%s\n%s\n\n",
+            $timestamp,
+            $requestId,
+            $stage,
+            $this->tenant_id ?? 'unknown',
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+            str_repeat('-', 80)
+        );
+        
+        file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
      * Handle incoming WhatsApp webhook requests
      */
     public function __invoke(Request $request, FeatureService $featureLimitChecker)
@@ -109,6 +139,9 @@ class WhatsAppWebhookController extends Controller
             // Set the tenant ID in the trait for all subsequent API calls
             $this->setWaTenantId($this->tenant_id);
 
+            // Generate unique request ID for tracking
+            $requestId = uniqid('req_', true);
+
             whatsapp_log(
                 'Webhook Payload Received',
                 'info',
@@ -122,16 +155,51 @@ class WhatsAppWebhookController extends Controller
 
             // Check for message ID to prevent duplicate processing
             $message_id = $payload['entry'][0]['changes'][0]['value']['messages'][0]['id'] ?? '';
+            $message_from = $payload['entry'][0]['changes'][0]['value']['messages'][0]['from'] ?? '';
+            $message_text = $payload['entry'][0]['changes'][0]['value']['messages'][0]['text']['body'] ?? 
+                           $payload['entry'][0]['changes'][0]['value']['messages'][0]['button']['text'] ?? 
+                           $payload['entry'][0]['changes'][0]['value']['messages'][0]['interactive']['button_reply']['title'] ?? 'N/A';
+
+            // LOG STAGE 1: Webhook Received
+            $this->logDuplicateTracking('1_WEBHOOK_RECEIVED', [
+                'request_id' => $requestId,
+                'message_id' => $message_id,
+                'from' => $message_from,
+                'message_text' => $message_text,
+                'tenant_id' => $this->tenant_id,
+                'timestamp' => microtime(true),
+            ]);
             if (!empty($message_id)) {
+                // LOG STAGE 2: Attempting Lock
+                $this->logDuplicateTracking('2_ATTEMPTING_LOCK', [
+                    'request_id' => $requestId,
+                    'message_id' => $message_id,
+                    'lock_key' => 'whatsapp_msg_' . $message_id,
+                    'lock_ttl' => 10,
+                ]);
+
                 // Use cache lock to prevent race conditions from duplicate webhooks
                 $lock = \Illuminate\Support\Facades\Cache::lock('whatsapp_msg_' . $message_id, 10);
                 
                 try {
                     // Try to acquire the lock (wait up to 2 seconds)
                     if ($lock->block(2)) {
+                        // LOG STAGE 3: Lock Acquired
+                        $this->logDuplicateTracking('3_LOCK_ACQUIRED', [
+                            'request_id' => $requestId,
+                            'message_id' => $message_id,
+                        ]);
                         // Check if message already processed
                         $found = $this->checkMessageProcessed($message_id);
                         if ($found) {
+                            // LOG STAGE 4A: Duplicate Detected
+                            $this->logDuplicateTracking('4A_DUPLICATE_DETECTED_IN_DB', [
+                                'request_id' => $requestId,
+                                'message_id' => $message_id,
+                                'action' => 'SKIPPED - Already in database',
+                                'prevented_duplicate' => true,
+                            ]);
+
                             whatsapp_log(
                                 'Duplicate Message Detected - Already Processed',
                                 'warning',
@@ -143,6 +211,13 @@ class WhatsAppWebhookController extends Controller
                             $lock->release();
                             return;
                         }
+
+                        // LOG STAGE 4B: Message is New
+                        $this->logDuplicateTracking('4B_MESSAGE_IS_NEW', [
+                            'request_id' => $requestId,
+                            'message_id' => $message_id,
+                            'action' => 'PROCESSING',
+                        ]);
                         
                         // Process the payload (lock will be released after)
                         $this->processPayloadData($payload);
@@ -153,6 +228,14 @@ class WhatsAppWebhookController extends Controller
                         // Release the lock after processing
                         $lock->release();
                     } else {
+                        // LOG STAGE 3A: Lock Failed
+                        $this->logDuplicateTracking('3A_LOCK_FAILED', [
+                            'request_id' => $requestId,
+                            'message_id' => $message_id,
+                            'action' => 'SKIPPED - Another process is handling',
+                            'prevented_duplicate' => true,
+                        ]);
+
                         // Could not acquire lock - another process is handling this message
                         whatsapp_log(
                             'Duplicate Message Detected - Currently Being Processed',
@@ -512,6 +595,14 @@ class WhatsAppWebhookController extends Controller
                             'tenant_id' => $this->tenant_id
                         ])->exists();
 
+                        // LOG STAGE 5: Check Active Flows
+                        $this->logDuplicateTracking('5_CHECK_ACTIVE_FLOWS', [
+                            'request_id' => $requestId,
+                            'message_id' => $message_id,
+                            'has_active_flows' => $hasActiveFlows,
+                            'will_skip_old_bots' => $hasActiveFlows,
+                        ]);
+
                         if ($hasActiveFlows) {
                             whatsapp_log('Tenant has active flows, skipping old message bot system', 'info', [
                                 'tenant_id' => $this->tenant_id,
@@ -529,6 +620,18 @@ class WhatsAppWebhookController extends Controller
                             $template_bots = TemplateBot::getTemplateBotsByRelType($contact_data->type ?? '', $query_trigger_msg, $this->tenant_id, 4);
                             $message_bots = MessageBot::getMessageBotsbyRelType($contact_data->type ?? '', $query_trigger_msg, $this->tenant_id, 4);
                         }
+
+                        // LOG STAGE 6: Found Old Bots
+                        $this->logDuplicateTracking('6_FOUND_OLD_BOTS', [
+                            'request_id' => $requestId,
+                            'message_id' => $message_id,
+                            'trigger_msg' => $trigger_msg,
+                            'template_bots_count' => count($template_bots),
+                            'message_bots_count' => count($message_bots),
+                            'template_bot_ids' => array_column($template_bots, 'id'),
+                            'message_bot_ids' => array_column($message_bots, 'id'),
+                            'total_matching_bots' => count($template_bots) + count($message_bots),
+                        ]);
 
                         whatsapp_log('Found bots matching trigger', 'info', [
                             'trigger_msg' => $trigger_msg,
@@ -549,6 +652,7 @@ class WhatsAppWebhookController extends Controller
                         $template_bots = array_map($add_messages, $template_bots);
 
                         // Track if any bot has responded to prevent duplicates
+                        // This flag is checked later to prevent flow processing too
                         $bot_responded = false;
 
                         // Iterate over template bots
@@ -565,6 +669,17 @@ class WhatsAppWebhookController extends Controller
                             // Send template on exact match, contains, or first time
                             if (($template['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $template['trigger']))))) || ($template['reply_type'] == 2 && !empty(array_filter(explode(',', $template['trigger']), fn($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($template['reply_type'] == 3 && $this->is_first_time) || $template['reply_type'] == 4) {
                                 
+                                // LOG STAGE 7A: Sending Template Bot Response
+                                $this->logDuplicateTracking('7A_SENDING_TEMPLATE_BOT', [
+                                    'request_id' => $requestId,
+                                    'message_id' => $message_id,
+                                    'bot_type' => 'TEMPLATE_BOT',
+                                    'template_id' => $template['id'] ?? 'unknown',
+                                    'template_name' => $template['template_name'] ?? 'unknown',
+                                    'trigger' => $template['trigger'] ?? '',
+                                    'reply_type' => $template['reply_type'],
+                                ]);
+
                                 whatsapp_log('Sending template bot response', 'info', [
                                     'template_id' => $template['id'] ?? 'unknown',
                                     'template_name' => $template['template_name'] ?? 'unknown',
@@ -580,6 +695,16 @@ class WhatsAppWebhookController extends Controller
                                 
                                 $bot_responded = true; // Mark that we sent a response
                                 
+                                // LOG STAGE 8A: Template Bot Sent
+                                $this->logDuplicateTracking('8A_TEMPLATE_BOT_SENT', [
+                                    'request_id' => $requestId,
+                                    'message_id' => $message_id,
+                                    'bot_type' => 'TEMPLATE_BOT',
+                                    'response_sent' => true,
+                                    'will_skip_message_bots' => true,
+                                    'will_skip_flows' => true,
+                                ]);
+
                                 whatsapp_log('Template bot response sent - stopping further bot processing', 'info', [
                                     'template_id' => $template['id'] ?? 'unknown',
                                 ], null, $this->tenant_id);
@@ -602,6 +727,17 @@ class WhatsAppWebhookController extends Controller
                                 }
                                 if (($message['reply_type'] == 1 && in_array(strtolower($trigger_msg), array_map('trim', array_map('strtolower', explode(',', $message['trigger']))))) || ($message['reply_type'] == 2 && !empty(array_filter(explode(',', $message['trigger']), fn($word) => mb_stripos($trigger_msg, trim($word)) !== false))) || ($message['reply_type'] == 3 && $this->is_first_time) || $message['reply_type'] == 4) {
 
+                                    // LOG STAGE 7B: Sending Message Bot Response
+                                    $this->logDuplicateTracking('7B_SENDING_MESSAGE_BOT', [
+                                        'request_id' => $requestId,
+                                        'message_id' => $message_id,
+                                        'bot_type' => 'MESSAGE_BOT',
+                                        'bot_id' => $message['id'] ?? 'unknown',
+                                        'trigger' => $message['trigger'] ?? '',
+                                        'message_preview' => substr($message['message'] ?? '', 0, 50),
+                                        'reply_type' => $message['reply_type'],
+                                    ]);
+
                                     whatsapp_log('Sending message bot response', 'info', [
                                         'message_id' => $message['id'] ?? 'unknown',
                                         'trigger' => $message['trigger'] ?? '',
@@ -619,6 +755,16 @@ class WhatsAppWebhookController extends Controller
                                     
                                     $bot_responded = true; // Mark that we sent a response
                                     
+                                    // LOG STAGE 8B: Message Bot Sent
+                                    $this->logDuplicateTracking('8B_MESSAGE_BOT_SENT', [
+                                        'request_id' => $requestId,
+                                        'message_id' => $message_id,
+                                        'bot_type' => 'MESSAGE_BOT',
+                                        'response_sent' => true,
+                                        'will_skip_other_message_bots' => true,
+                                        'will_skip_flows' => true,
+                                    ]);
+
                                     whatsapp_log('Message bot response sent - stopping further bot processing', 'info', [
                                         'message_id' => $message['id'] ?? 'unknown',
                                     ], null, $this->tenant_id);
@@ -647,15 +793,72 @@ class WhatsAppWebhookController extends Controller
         // Label for skipping old bot system when flows exist
         process_flows:
 
-        // Only process flows if e-commerce didn't handle the message
-        if (!$this->ecommerceHandledMessage) {
-            // Process new flow system
-            $this->processBotFlow($message_data);
-        } else {
+        // Only process flows if e-commerce didn't handle the message AND old bots didn't respond
+        // Check if $bot_responded exists and is true (set by old bot system)
+        $oldBotResponded = isset($bot_responded) && $bot_responded === true;
+        
+        // LOG STAGE 9: Flow Processing Decision
+        $this->logDuplicateTracking('9_FLOW_PROCESSING_DECISION', [
+            'request_id' => $requestId ?? uniqid('req_'),
+            'message_id' => $message_id ?? 'N/A',
+            'old_bot_responded' => $oldBotResponded,
+            'ecommerce_handled' => $this->ecommerceHandledMessage,
+            'will_process_flow' => !$oldBotResponded && !$this->ecommerceHandledMessage,
+            'skip_reason' => $oldBotResponded ? 'OLD_BOT_RESPONDED' : ($this->ecommerceHandledMessage ? 'ECOMMERCE_HANDLED' : 'NONE'),
+        ]);
+
+        if ($oldBotResponded) {
+            // LOG STAGE 10A: Skipping Flow - Old Bot
+            $this->logDuplicateTracking('10A_SKIPPING_FLOW_OLD_BOT', [
+                'request_id' => $requestId ?? uniqid('req_'),
+                'message_id' => $message_id ?? 'N/A',
+                'prevented_duplicate' => true,
+                'reason' => 'Old message/template bot already sent response',
+            ]);
+
+            whatsapp_log('Skipping flow processing - old message/template bot already responded', 'info', [
+                'tenant_id' => $this->tenant_id,
+                'prevented_duplicate' => true,
+                'bot_type' => 'legacy_message_or_template_bot',
+            ], null, $this->tenant_id);
+        } elseif ($this->ecommerceHandledMessage) {
+            // LOG STAGE 10B: Skipping Flow - Ecommerce
+            $this->logDuplicateTracking('10B_SKIPPING_FLOW_ECOMMERCE', [
+                'request_id' => $requestId ?? uniqid('req_'),
+                'message_id' => $message_id ?? 'N/A',
+                'prevented_duplicate' => true,
+                'reason' => 'E-commerce already sent response',
+            ]);
+
             whatsapp_log('Skipping flow processing - e-commerce already handled the message', 'info', [
                 'tenant_id' => $this->tenant_id,
                 'prevented_duplicate' => true,
+                'bot_type' => 'ecommerce',
             ], null, $this->tenant_id);
+        } else {
+            // LOG STAGE 10C: Processing Flow
+            $this->logDuplicateTracking('10C_PROCESSING_FLOW', [
+                'request_id' => $requestId ?? uniqid('req_'),
+                'message_id' => $message_id ?? 'N/A',
+                'action' => 'PROCESSING_FLOW_SYSTEM',
+                'no_previous_responses' => true,
+            ]);
+
+            // Process new flow system only if nothing else responded
+            whatsapp_log('Processing flow system - no other bot has responded', 'info', [
+                'tenant_id' => $this->tenant_id,
+                'old_bot_responded' => $oldBotResponded,
+                'ecommerce_handled' => $this->ecommerceHandledMessage,
+            ], null, $this->tenant_id);
+            
+            $this->processBotFlow($message_data);
+            
+            // LOG STAGE 11: Flow Processing Complete
+            $this->logDuplicateTracking('11_FLOW_PROCESSING_COMPLETE', [
+                'request_id' => $requestId ?? uniqid('req_'),
+                'message_id' => $message_id ?? 'N/A',
+                'flow_executed' => true,
+            ]);
         }
         
         // Label for skipping flow processing when e-commerce handled it
