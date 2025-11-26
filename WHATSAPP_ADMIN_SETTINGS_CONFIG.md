@@ -79,7 +79,27 @@ ON DUPLICATE KEY UPDATE value = 'YOUR_CONFIG_ID_HERE', updated_at = NOW();
 
 ## Optional Settings
 
-### 4. Webhook Connection (Admin Level)
+### 4. Webhook Verify Token (Required)
+
+```sql
+INSERT INTO settings (`group`, `key`, `value`, created_at, updated_at) 
+VALUES ('whatsapp', 'webhook_verify_token', 'YOUR_RANDOM_32_CHAR_TOKEN', NOW(), NOW())
+ON DUPLICATE KEY UPDATE value = 'YOUR_RANDOM_32_CHAR_TOKEN', updated_at = NOW();
+```
+
+**Purpose:** Used by Facebook to verify your webhook endpoint. Required for embedded signup.
+
+**Generate random token:**
+```php
+// In tinker
+save_setting('whatsapp', 'webhook_verify_token', \Illuminate\Support\Str::random(32));
+```
+
+**Important:** This token must match between embedded signup and your webhook controller.
+
+---
+
+### 5. Webhook Connection (Admin Level)
 
 ```sql
 INSERT INTO settings (`group`, `key`, `value`, created_at, updated_at) 
@@ -91,7 +111,7 @@ ON DUPLICATE KEY UPDATE value = '1', updated_at = NOW();
 
 ---
 
-### 5. WhatsApp API Version
+### 6. WhatsApp API Version
 
 ```sql
 INSERT INTO settings (`group`, `key`, `value`, created_at, updated_at) 
@@ -113,7 +133,8 @@ ON DUPLICATE KEY UPDATE value = 'v23.0', updated_at = NOW();
 INSERT INTO settings (`group`, `key`, `value`, created_at, updated_at) VALUES
 ('whatsapp', 'wm_fb_app_id', 'REPLACE_WITH_YOUR_APP_ID', NOW(), NOW()),
 ('whatsapp', 'wm_fb_app_secret', 'REPLACE_WITH_YOUR_APP_SECRET', NOW(), NOW()),
-('whatsapp', 'wm_fb_config_id', 'REPLACE_WITH_YOUR_CONFIG_ID', NOW(), NOW())
+('whatsapp', 'wm_fb_config_id', 'REPLACE_WITH_YOUR_CONFIG_ID', NOW(), NOW()),
+('whatsapp', 'webhook_verify_token', UUID(), NOW(), NOW())
 ON DUPLICATE KEY UPDATE 
   value = VALUES(value),
   updated_at = NOW();
@@ -127,6 +148,8 @@ ON DUPLICATE KEY UPDATE
   updated_at = NOW();
 ```
 
+**Note:** The `webhook_verify_token` uses `UUID()` to auto-generate a unique token. If you prefer a specific token, replace `UUID()` with your own value.
+
 ---
 
 ## Verification
@@ -136,16 +159,17 @@ ON DUPLICATE KEY UPDATE
 ```sql
 SELECT * FROM settings 
 WHERE `group` = 'whatsapp' 
-AND `key` IN ('wm_fb_app_id', 'wm_fb_app_secret', 'wm_fb_config_id');
+AND `key` IN ('wm_fb_app_id', 'wm_fb_app_secret', 'wm_fb_config_id', 'webhook_verify_token');
 ```
 
 **Expected Output:**
 ```
-| id | group     | key               | value                          |
-|----|-----------|-------------------|--------------------------------|
-| 1  | whatsapp  | wm_fb_app_id      | 1234567890123456              |
-| 2  | whatsapp  | wm_fb_app_secret  | abc123def456ghi789jkl012mno345|
-| 3  | whatsapp  | wm_fb_config_id   | 9876543210987654              |
+| id | group     | key                   | value                          |
+|----|-----------|-----------------------|--------------------------------|
+| 1  | whatsapp  | wm_fb_app_id          | 1234567890123456              |
+| 2  | whatsapp  | wm_fb_app_secret      | abc123def456ghi789jkl012mno345|
+| 3  | whatsapp  | wm_fb_config_id       | 9876543210987654              |
+| 4  | whatsapp  | webhook_verify_token  | a8f2c3e9d7b4f1a5c6e8d2b3a9f7c1|
 ```
 
 ---
@@ -159,6 +183,7 @@ If you have the `save_setting()` helper function:
 save_setting('whatsapp', 'wm_fb_app_id', 'YOUR_APP_ID');
 save_setting('whatsapp', 'wm_fb_app_secret', 'YOUR_APP_SECRET');
 save_setting('whatsapp', 'wm_fb_config_id', 'YOUR_CONFIG_ID');
+save_setting('whatsapp', 'webhook_verify_token', \Illuminate\Support\Str::random(32));
 ```
 
 ---
@@ -358,6 +383,13 @@ class SeedWhatsappAdminSettings extends Migration
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'group' => 'whatsapp',
+                'key' => 'webhook_verify_token',
+                'value' => \Illuminate\Support\Str::random(32),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 
@@ -365,7 +397,7 @@ class SeedWhatsappAdminSettings extends Migration
     {
         DB::table('settings')
             ->where('group', 'whatsapp')
-            ->whereIn('key', ['wm_fb_app_id', 'wm_fb_app_secret', 'wm_fb_config_id'])
+            ->whereIn('key', ['wm_fb_app_id', 'wm_fb_app_secret', 'wm_fb_config_id', 'webhook_verify_token'])
             ->delete();
     }
 }
@@ -379,6 +411,7 @@ class SeedWhatsappAdminSettings extends Migration
 1. ✅ `wm_fb_app_id` - Facebook App ID
 2. ✅ `wm_fb_app_secret` - Facebook App Secret
 3. ✅ `wm_fb_config_id` - Configuration ID
+4. ✅ `webhook_verify_token` - Webhook verification token (auto-generated if missing)
 
 **Save to:**
 - `settings` table with `group` = 'whatsapp'
