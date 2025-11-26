@@ -51,14 +51,15 @@
                                     </p>
                                     <div class="flex items-center justify-center">
                                         <button id="fb-login-button" 
-                                                class="inline-flex items-center px-4 py-2 bg-[#1877F2] hover:bg-[#166FE5] text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#1877F2] focus:ring-offset-2">
+                                                type="button"
+                                                class="inline-flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
                                             <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
                                                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                                             </svg>
                                             {{ t('connect_with_facebook') }}
                                         </button>
                                     </div>
-                                    <div id="fb-embedded-signup" class="w-full"></div>
+                                    <div id="fb-embedded-signup" class="w-full hidden"></div>
                                 </div>
                             </div>
                         </div>
@@ -471,6 +472,29 @@
         fjs.parentNode.insertBefore(js, fjs);
     }(document, 'script', 'facebook-jssdk'));
 
+    // Store reference to embedded button for reuse (global scope)
+    let embeddedSignupButton = null;
+    
+    // Function to trigger embedded signup (global scope)
+    function triggerEmbeddedSignup() {
+        if (embeddedSignupButton) {
+            embeddedSignupButton.click();
+            return true;
+        }
+        
+        // Try to find the button
+        const container = document.getElementById('fb-embedded-signup');
+        if (container) {
+            embeddedSignupButton = container.querySelector('button, [role="button"], .fb-embedded-signup button, iframe');
+            if (embeddedSignupButton) {
+                embeddedSignupButton.click();
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
     window.fbAsyncInit = function() {
         FB.init({
             appId: '{{ $admin_fb_app_id }}',
@@ -478,25 +502,11 @@
             xfbml: true,
             version: 'v18.0'
         });
-
-        // Handle Facebook Login button click - Trigger embedded signup widget
-        document.getElementById('fb-login-button')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            // Find the embedded signup button rendered by Facebook widget
-            const embeddedButton = document.querySelector('#fb-embedded-signup button, #fb-embedded-signup [role="button"], #fb-embedded-signup .fb-embedded-signup button');
-            if (embeddedButton) {
-                embeddedButton.click();
-            } else {
-                // If widget not rendered yet, wait and retry
-                setTimeout(function() {
-                    const btn = document.querySelector('#fb-embedded-signup button, #fb-embedded-signup [role="button"]');
-                    if (btn) {
-                        btn.click();
-                    }
-                }, 500);
-            }
-        });
+        
+        // Trigger widget rendering after FB is initialized
+        setTimeout(function() {
+            renderEmbeddedSignup();
+        }, 500);
 
         // Listen for embedded signup completion - This is the main event handler
         FB.Event.subscribe('embedded_signup', function(response) {
@@ -519,54 +529,95 @@
         });
     };
 
-    // Render embedded signup widget - This will create a button that opens in a popup
-    document.addEventListener('DOMContentLoaded', function() {
-        function renderEmbeddedSignup() {
-            if (typeof FB !== 'undefined' && FB.XFBML) {
-                const container = document.getElementById('fb-embedded-signup');
-                if (container && container.innerHTML.trim() === '') {
-                    // Use Facebook's Embedded Signup widget - it will open in popup automatically
-                    // The widget uses the config_id from admin panel
-                    container.innerHTML = `
-                        <div class="fb-embedded-signup" 
-                             data-config-id="{{ $admin_fb_config_id }}"
-                             data-redirect-uri="{{ url(tenant_route('tenant.connect', [], false)) }}"
-                             data-width="100%">
-                        </div>
-                    `;
-                    FB.XFBML.parse(container);
-                    
-                    // After widget renders, hide Facebook's default button and use our custom button
-                    setTimeout(function() {
-                        const fbButton = container.querySelector('button, [role="button"], .fb-embedded-signup button');
-                        if (fbButton) {
-                            // Hide Facebook's default button (we'll use our custom styled button)
-                            fbButton.style.display = 'none';
-                            // Make our custom button trigger Facebook's embedded signup
-                            const customButton = document.getElementById('fb-login-button');
-                            if (customButton) {
-                                customButton.onclick = function(e) {
-                                    e.preventDefault();
-                                    fbButton.click();
-                                };
-                            }
-                        }
-                    }, 1000);
-                }
-            } else if (typeof FB === 'undefined') {
-                // Retry if FB not loaded yet
-                setTimeout(renderEmbeddedSignup, 500);
+    // Handle Facebook Login button click - Trigger embedded signup widget
+    document.addEventListener('click', function(e) {
+        if (e.target && (e.target.id === 'fb-login-button' || e.target.closest('#fb-login-button'))) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (!triggerEmbeddedSignup()) {
+                // If button not found, try again after a short delay
+                setTimeout(function() {
+                    if (!triggerEmbeddedSignup()) {
+                        console.error('Facebook embedded signup widget not found. Please refresh the page.');
+                        alert('Facebook login is not ready. Please refresh the page and try again.');
+                    }
+                }, 500);
             }
         }
+    });
+    
+    // Render embedded signup widget - This will create a button that opens in a popup
+    function renderEmbeddedSignup() {
+        if (typeof FB === 'undefined' || !FB.XFBML) {
+            // Retry if FB not loaded yet
+            setTimeout(renderEmbeddedSignup, 500);
+            return;
+        }
         
-        // Wait for FB SDK to be ready
+        const container = document.getElementById('fb-embedded-signup');
+        if (!container) {
+            return;
+        }
+        
+        // Only render if container is empty
+        if (container.innerHTML.trim() !== '') {
+            // Widget already rendered, just find the button
+            setTimeout(function() {
+                embeddedSignupButton = container.querySelector('button, [role="button"], .fb-embedded-signup button, iframe');
+            }, 500);
+            return;
+        }
+        
+        // Use Facebook's Embedded Signup widget - it will open in popup automatically
+        // The widget uses the config_id from admin panel
+        container.innerHTML = `
+            <div class="fb-embedded-signup" 
+                 data-config-id="{{ $admin_fb_config_id }}"
+                 data-redirect-uri="{{ url(tenant_route('tenant.connect', [], false)) }}"
+                 data-width="100%">
+            </div>
+        `;
+        
+        try {
+            FB.XFBML.parse(container);
+        } catch (e) {
+            console.error('Error parsing FB XFBML:', e);
+        }
+        
+        // After widget renders, find and store the button reference
+        setTimeout(function() {
+            embeddedSignupButton = container.querySelector('button, [role="button"], .fb-embedded-signup button, iframe');
+            
+            if (embeddedSignupButton) {
+                // Hide Facebook's default button (we'll use our custom styled button)
+                if (embeddedSignupButton.style) {
+                    embeddedSignupButton.style.display = 'none';
+                }
+                console.log('Facebook embedded signup widget ready');
+            } else {
+                console.warn('Facebook embedded signup button not found after render');
+            }
+        }, 1500);
+    }
+    
+    // Wait for DOM and FB SDK to be ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof FB !== 'undefined') {
+                renderEmbeddedSignup();
+            } else {
+                setTimeout(renderEmbeddedSignup, 1500);
+            }
+        });
+    } else {
+        // DOM already loaded
         if (typeof FB !== 'undefined') {
             renderEmbeddedSignup();
         } else {
-            // Wait for fbAsyncInit
             setTimeout(renderEmbeddedSignup, 1500);
         }
-    });
+    }
 </script>
 @endpush
 @endif
