@@ -35,6 +35,39 @@
                         </div>
                     </x-slot:header>
                     <x-slot:content>
+                        @if($embedded_signup_configured)
+                        {{-- Embedded Signup Option --}}
+                        <div class="mb-6 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+                            <div class="flex items-start space-x-3">
+                                <div class="flex-shrink-0">
+                                    <x-heroicon-o-sparkles class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                                </div>
+                                <div class="flex-1">
+                                    <h4 class="text-sm font-semibold text-primary-900 dark:text-primary-100 mb-1">
+                                        {{ t('embedded_signup') }}
+                                    </h4>
+                                    <p class="text-xs text-primary-700 dark:text-primary-300 mb-3">
+                                        {{ t('emb_signup_info') }}
+                                    </p>
+                                    <div id="fb-embedded-signup" class="w-full"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- Divider --}}
+                        <div class="relative my-6">
+                            <div class="absolute inset-0 flex items-center">
+                                <div class="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                            </div>
+                            <div class="relative flex justify-center text-sm">
+                                <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                                    {{ t('or') }}
+                                </span>
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- Manual Connection Form --}}
                         <div class="flex flex-col gap-2 items-center">
                             <div class="w-full">
                                 <x-label for="wm_business_account_id" class="flex items-center space-x-1">
@@ -414,3 +447,69 @@
         </div>
     </div>
 </div>
+
+@if($embedded_signup_configured)
+@push('scripts')
+{{-- Facebook Embedded Signup SDK --}}
+<div id="fb-root"></div>
+<script>
+    // Facebook SDK
+    (function(d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s); js.id = id;
+        js.src = "https://connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+
+    window.fbAsyncInit = function() {
+        FB.init({
+            appId: '{{ $admin_fb_app_id }}',
+            cookie: true,
+            xfbml: true,
+            version: 'v18.0'
+        });
+
+        // Listen for embedded signup completion
+        FB.Event.subscribe('embedded_signup', function(response) {
+            console.log('Embedded signup response:', response);
+            
+            if (response && response.code) {
+                // Send authorization code to Livewire
+                @this.handleEmbeddedSignup(response.code);
+            } else if (response && response.authResponse && response.authResponse.accessToken) {
+                // Fallback: if we get access token directly
+                const accessToken = response.authResponse.accessToken;
+                // Try to get business account ID
+                FB.api('/me/businesses', { access_token: accessToken }, function(businessResponse) {
+                    if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
+                        const businessAccountId = businessResponse.data[0].id;
+                        // We'll need to handle this differently - save directly
+                        @this.call('handleEmbeddedSignupDirect', accessToken, businessAccountId);
+                    }
+                });
+            }
+        });
+    };
+
+    // Render embedded signup widget
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(function() {
+            if (typeof FB !== 'undefined' && FB.XFBML) {
+                const container = document.getElementById('fb-embedded-signup');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="fb-embedded-signup" 
+                             data-config-id="{{ $admin_fb_config_id }}"
+                             data-redirect-uri="{{ tenant_route('tenant.connect') }}"
+                             data-width="100%">
+                        </div>
+                    `;
+                    FB.XFBML.parse(container);
+                }
+            }
+        }, 1000);
+    });
+</script>
+@endpush
+@endif
