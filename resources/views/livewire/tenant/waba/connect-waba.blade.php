@@ -49,12 +49,47 @@
                                     <p class="text-xs text-primary-700 dark:text-primary-300 mb-3">
                                         {{ t('emb_signup_info') }}
                                     </p>
-                                    {{-- Facebook Login Button --}}
-                                    <button type="button" onclick="launchWhatsAppSignup()" 
-                                        style="background-color: #1877f2; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; padding: 12px 24px;">
-                                        <i class="fab fa-facebook mr-2"></i>
-                                        {{ t('connect_with_facebook') }}
-                                    </button>
+                                    {{-- Facebook Login Button with Loading State --}}
+                                    <div x-data="{ 
+                                        embeddedLoading: false,
+                                        init() {
+                                            window.addEventListener('reset-embedded-loading', () => {
+                                                this.embeddedLoading = false;
+                                            });
+                                        }
+                                    }" class="inline-block">
+                                        <button type="button" 
+                                            @click="embeddedLoading = true; launchWhatsAppSignup()" 
+                                            :disabled="embeddedLoading"
+                                            id="fb-connect-btn"
+                                            class="inline-flex items-center justify-center transition-all duration-200"
+                                            style="background-color: #1877f2; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; padding: 12px 24px; min-width: 250px;"
+                                            :style="embeddedLoading ? 'opacity: 0.7; cursor: not-allowed;' : ''">
+                                            
+                                            {{-- Loading Spinner --}}
+                                            <svg x-show="embeddedLoading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            
+                                            {{-- Facebook Icon --}}
+                                            <i x-show="!embeddedLoading" class="fab fa-facebook mr-2"></i>
+                                            
+                                            {{-- Button Text --}}
+                                            <span x-text="embeddedLoading ? '{{ t('connecting') ?? 'Connecting...' }}' : '{{ t('connect_with_facebook') }}'"></span>
+                                        </button>
+                                        
+                                        {{-- Loading Status Message --}}
+                                        <div x-show="embeddedLoading" x-cloak class="mt-3 text-sm text-primary-700 dark:text-primary-300">
+                                            <div class="flex items-center space-x-2">
+                                                <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                <span>{{ t('please_wait_connecting') ?? 'Please wait while we connect to Facebook...' }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -491,6 +526,12 @@
                 setupTimeout = null,
                 authReceived = false;
 
+            // Function to reset loading state
+            const resetLoadingState = function() {
+                const event = new CustomEvent('reset-embedded-loading');
+                window.dispatchEvent(event);
+            };
+
             // Function to send setup data to backend
             const sendSetupData = function() {
                 if (tempAccessCode && waBaId && !isFinished) {
@@ -511,9 +552,11 @@
                     @this.handleEmbeddedSignup(tempAccessCode, waBaId, phoneNumberId)
                         .then(function() {
                             console.log('Embedded signup processed successfully');
+                            // Loading state will be reset by page redirect or Livewire
                         })
                         .catch(function(error) {
                             console.error('Embedded signup processing failed:', error);
+                            resetLoadingState();
                         });
                 } else {
                     console.warn('Missing required data for embedded signup:', {
@@ -534,6 +577,7 @@
 
                     if (!tempAccessCode) {
                         console.error('Failed to get authorization code from Facebook');
+                        resetLoadingState();
                         return;
                     }
 
@@ -542,7 +586,8 @@
                     setupTimeout = setTimeout(function() {
                         if (!isFinished && authReceived) {
                             console.error('Setup timeout - WABA ID not received within 2 minutes');
-                            alert('{{ t("setup_timeout_message") }}');
+                            resetLoadingState();
+                            alert('{{ t("setup_timeout_message") ?? "Setup timeout: Please complete the WhatsApp setup flow and click Finish within 2 minutes." }}');
                         }
                     }, 120000); // 2 minutes timeout
 
@@ -551,6 +596,7 @@
                         clearTimeout(setupTimeout);
                     }
                     console.log('User cancelled login or did not fully authorize');
+                    resetLoadingState();
                 }
             }, {
                 config_id: '{{ $admin_fb_config_id }}',
@@ -610,7 +656,8 @@
                                     } else if (waitCount >= 30) { // 3 seconds
                                         console.error('Timeout waiting for auth code');
                                         clearInterval(waitInterval);
-                                        alert('{{ t("setup_failed_no_auth_code") }}');
+                                        resetLoadingState();
+                                        alert('{{ t("setup_failed_no_auth_code") ?? "Setup failed: Could not retrieve authorization code from Facebook." }}');
                                     }
                                 }, 100);
                             }
@@ -621,6 +668,7 @@
                             if (setupTimeout) {
                                 clearTimeout(setupTimeout);
                             }
+                            resetLoadingState();
                         } else {
                             console.log('Other event received:', data.event);
                         }

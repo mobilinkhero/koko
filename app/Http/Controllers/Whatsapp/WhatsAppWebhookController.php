@@ -39,6 +39,8 @@ class WhatsAppWebhookController extends Controller
 
     protected $featureLimitChecker;
 
+    protected $ecommerceHandledMessage = false;
+
     /**
      * Handle incoming WhatsApp webhook requests
      */
@@ -187,6 +189,9 @@ class WhatsAppWebhookController extends Controller
 
     private function processBotSending(array $message_data)
     {
+        // Reset flag at start of processing
+        $this->ecommerceHandledMessage = false;
+        
         if (!empty($message_data['messages'])) {
             $message = reset($message_data['messages']);
             $trigger_msg = isset($message['button']['text']) ? $message['button']['text'] : $message['text']['body'] ?? '';
@@ -439,6 +444,15 @@ class WhatsAppWebhookController extends Controller
                                         'response_sent' => true
                                     ]);
 
+                                    // Mark that e-commerce handled the message
+                                    $this->ecommerceHandledMessage = true;
+                                    
+                                    whatsapp_log('E-commerce handled message, will skip flow processing', 'info', [
+                                        'tenant_id' => $this->tenant_id,
+                                        'phone' => $contact_number,
+                                        'trigger_msg' => $trigger_msg,
+                                    ], null, $this->tenant_id);
+                                    
                                     // Exit early if e-commerce handled the message
                                     return;
                                 }
@@ -549,8 +563,19 @@ class WhatsAppWebhookController extends Controller
         // Label for skipping old bot system when flows exist
         process_flows:
 
-        // Process new flow system
-        $this->processBotFlow($message_data);
+        // Only process flows if e-commerce didn't handle the message
+        if (!$this->ecommerceHandledMessage) {
+            // Process new flow system
+            $this->processBotFlow($message_data);
+        } else {
+            whatsapp_log('Skipping flow processing - e-commerce already handled the message', 'info', [
+                'tenant_id' => $this->tenant_id,
+                'prevented_duplicate' => true,
+            ], null, $this->tenant_id);
+        }
+        
+        // Label for skipping flow processing when e-commerce handled it
+        skip_flow_processing:
     }
 
     /**
