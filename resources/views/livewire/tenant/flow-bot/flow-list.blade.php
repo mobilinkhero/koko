@@ -73,7 +73,7 @@
                             {{ t('name') }}
                         </x-label>
                     </div>
-                    <x-input wire:model.defer="botFlow.name" type="text" id="name" class="w-full" />
+                    <x-input wire:model="botFlow.name" type="text" id="name" class="w-full" />
                     <x-input-error for="botFlow.name" class="mt-2" />
                 </div>
 
@@ -85,7 +85,7 @@
                             {{ t('description') }}
                         </x-label>
                     </div>
-                    <x-textarea wire:model.defer="botFlow.description" rows="4"></x-textarea>
+                    <x-textarea wire:model="botFlow.description" rows="4"></x-textarea>
                     <x-input-error for="botFlow.description" class="mt-2" />
                 </div>
 
