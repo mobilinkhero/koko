@@ -37,6 +37,8 @@ class ConnectWaba extends Component
     public $account_connected = false; // Track if account is connected
 
     public $use_embedded_signup = false; // Track if user wants to use embedded signup
+    
+    public $api_verification_warning = false; // Show warning if API verification fails
 
     protected $messages = [
         'wm_fb_app_id.required' => 'The Facebook App ID is required.',
@@ -75,9 +77,20 @@ class ConnectWaba extends Component
             if ($phone_numbers['status']) {
                 $webhook_configuration_url = array_column(array_column($phone_numbers['data'], 'webhook_configuration'), 'application');
             } else {
-                $this->step = 1;
-
-                return;
+                // API call failed - but don't disconnect! This could be a temporary issue.
+                // Resetting to step 1 causes duplicate webhook subscriptions.
+                whatsapp_log('Failed to verify WhatsApp connection via API (temporary)', 'warning', [
+                    'tenant_id' => tenant_id(),
+                    'is_whatsmark_connected' => $this->is_whatsmark_connected,
+                    'error' => $phone_numbers['message'] ?? 'Unknown error',
+                ]);
+                
+                // Show warning to user but maintain connection
+                $this->api_verification_warning = true;
+                
+                // Keep the connection status and webhook configuration
+                // User can manually verify or reconnect if there's a real issue
+                $webhook_configuration_url = [];
             }
         }
 

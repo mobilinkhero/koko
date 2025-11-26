@@ -14,6 +14,26 @@
         </x-page-heading>
     </div>
 
+    {{-- Warning Banner when API verification fails but connection is maintained --}}
+    @if($api_verification_warning)
+    <div class="mb-4 p-4 bg-warning-50 dark:bg-warning-900/30 border border-warning-200 dark:border-warning-800 rounded-lg">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <x-heroicon-o-exclamation-triangle class="h-5 w-5 text-warning-400" />
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-warning-800 dark:text-warning-200">
+                    {{ t('connection_verification_warning') ?? 'Connection Verification Issue' }}
+                </h3>
+                <div class="mt-2 text-sm text-warning-700 dark:text-warning-300">
+                    <p>{{ t('api_verification_failed_message') ?? 'Your WhatsApp account is still connected, but we couldn\'t verify it with Facebook API right now. This is usually temporary. Your messages will continue to work normally.' }}</p>
+                    <p class="mt-2 font-semibold">⚠️ {{ t('do_not_reconnect_warning') ?? 'Do NOT reconnect unless messages are actually not working, as reconnecting may cause duplicate messages.' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
         <div class="md:col-span-8">
 
