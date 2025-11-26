@@ -169,7 +169,7 @@ class Dashboard extends Component
             // Get current tenant
             $this->currentTenant = $this->getCurrentTenant();
 
-            if (! $this->currentTenant) {
+            if (!$this->currentTenant) {
                 throw new \Exception('No current tenant found');
             }
 
@@ -186,7 +186,7 @@ class Dashboard extends Component
 
     private function setDefaultValues()
     {
-        $this->appName = $this->settings['system.site_name'] ?? 'Whatsmark-SaaS';
+        $this->appName = $this->settings['system.site_name'] ?? config('app.name', 'Chatvo');
         $this->activeSubscription = null;
         $this->planName = 'Free';
         $this->nextBillingDate = null;
@@ -275,10 +275,10 @@ class Dashboard extends Component
             // Get contact count
             if ($usageStats['contacts']['current'] === 0) {
                 try {
-                    if (! $this->tenant_id) {
+                    if (!$this->tenant_id) {
                         $this->tenant_id = $this->currentTenant->id;
                     }
-                    if (! $this->tenant_subdomain) {
+                    if (!$this->tenant_subdomain) {
                         $this->tenant_subdomain = tenant_subdomain_by_tenant_id($this->tenant_id);
                     }
 
@@ -293,10 +293,10 @@ class Dashboard extends Component
             // Get conversation count (chat messages)
             if ($usageStats['conversations']['current'] === 0) {
                 try {
-                    if (! $this->tenant_id) {
+                    if (!$this->tenant_id) {
                         $this->tenant_id = $this->currentTenant->id;
                     }
-                    if (! $this->tenant_subdomain) {
+                    if (!$this->tenant_subdomain) {
                         $this->tenant_subdomain = tenant_subdomain_by_tenant_id($this->tenant_id);
                     }
 
@@ -495,7 +495,7 @@ class Dashboard extends Component
         $contactModel = new Contact;
         $tableName = $contactModel->getTable();
 
-        $sources = DB::table($tableName.' as contacts')
+        $sources = DB::table($tableName . ' as contacts')
             ->join('sources', 'contacts.source_id', '=', 'sources.id')
             ->selectRaw('sources.name, COUNT(*) as count')
             ->groupBy('sources.name')
@@ -772,7 +772,7 @@ class Dashboard extends Component
 
     private function loadCachedAppSettings()
     {
-        $this->appName = $this->settings['system.site_name'] ?? 'Whatsmark-SaaS';
+        $this->appName = $this->settings['system.site_name'] ?? config('app.name', 'Chatvo');
     }
 
     private function loadCachedSubscriptionData()
@@ -953,15 +953,15 @@ class Dashboard extends Component
 
     private function updateFeatureUsageCounts()
     {
-        if (! $this->activeSubscription) {
+        if (!$this->activeSubscription) {
             return;
         }
 
         try {
-            if (! $this->tenant_id) {
+            if (!$this->tenant_id) {
                 $this->tenant_id = $this->currentTenant->id;
             }
-            if (! $this->tenant_subdomain) {
+            if (!$this->tenant_subdomain) {
                 $this->tenant_subdomain = tenant_subdomain_by_tenant_id($this->tenant_id);
             }
 
