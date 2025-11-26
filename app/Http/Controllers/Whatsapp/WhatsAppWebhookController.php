@@ -45,6 +45,8 @@ class WhatsAppWebhookController extends Controller
 
     protected $currentMessageId = null;
 
+    protected $oldBotHasResponded = false; // ✅ NEW: Class-level flag to prevent duplicates
+
     /**
      * Log to dedicated duplicate tracking file
      */
@@ -651,7 +653,8 @@ class WhatsAppWebhookController extends Controller
                                 $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname . ' ' . $contact_data->lastname, '', '', false);
                                 $chatMessage = $this->storeBotMessages($template, $chatId, $contact_data, 'template_bot', $response);
                                 
-                                $bot_responded = true; // Mark that we sent a response
+                                $bot_responded = true; // Mark local variable
+                                $this->oldBotHasResponded = true; // ✅ Mark class property
                                 
                                 // LOG STAGE 8A: Template Bot Sent
                                 $this->logDuplicateTracking('8A_TEMPLATE_BOT_SENT', [
@@ -711,7 +714,8 @@ class WhatsAppWebhookController extends Controller
                                     $chatId = $this->createOrUpdateInteraction($contact_number, $message_data['metadata']['display_phone_number'], $message_data['metadata']['phone_number_id'], $contact_data->firstname . ' ' . $contact_data->lastname, '', '', false);
                                     $chatMessage = $this->storeBotMessages($message, $chatId, $contact_data, '', $response);
                                     
-                                    $bot_responded = true; // Mark that we sent a response
+                                    $bot_responded = true; // Mark local variable
+                                    $this->oldBotHasResponded = true; // ✅ Mark class property
                                     
                                     // LOG STAGE 8B: Message Bot Sent
                                     $this->logDuplicateTracking('8B_MESSAGE_BOT_SENT', [
@@ -752,14 +756,16 @@ class WhatsAppWebhookController extends Controller
         process_flows:
 
         // Only process flows if e-commerce didn't handle the message AND old bots didn't respond
-        // Check if $bot_responded exists and is true (set by old bot system)
-        $oldBotResponded = isset($bot_responded) && $bot_responded === true;
+        // Check class property OR local variable for maximum safety
+        $oldBotResponded = $this->oldBotHasResponded || (isset($bot_responded) && $bot_responded === true);
         
         // LOG STAGE 9: Flow Processing Decision
         $this->logDuplicateTracking('9_FLOW_PROCESSING_DECISION', [
             'request_id' => $requestId ?? uniqid('req_'),
             'message_id' => $message_id ?? 'N/A',
             'old_bot_responded' => $oldBotResponded,
+            'class_prop_responded' => $this->oldBotHasResponded,
+            'local_var_responded' => isset($bot_responded) ? $bot_responded : 'unset',
             'ecommerce_handled' => $this->ecommerceHandledMessage,
             'will_process_flow' => !$oldBotResponded && !$this->ecommerceHandledMessage,
             'skip_reason' => $oldBotResponded ? 'OLD_BOT_RESPONDED' : ($this->ecommerceHandledMessage ? 'ECOMMERCE_HANDLED' : 'NONE'),
