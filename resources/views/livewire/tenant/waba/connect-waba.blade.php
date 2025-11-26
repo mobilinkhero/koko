@@ -450,91 +450,190 @@
 
 @if($embedded_signup_configured)
 @push('scripts')
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
 <script>
-    // Facebook Embedded Signup SDK
-    (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "https://connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
-
+    'use strict';
+    
+    // Initialize Facebook SDK
     window.fbAsyncInit = function() {
         FB.init({
             appId: '{{ $admin_fb_app_id }}',
-            cookie: true,
+            autoLogAppEvents: true,
             xfbml: true,
-            version: 'v18.0'
+            version: 'v23.0'
         });
-
-        // Initialize Embedded Signup
-        FB.Event.subscribe('embedded_signup', function(response) {
-            if (response && response.authResponse) {
-                // Get access token
-                const accessToken = response.authResponse.accessToken;
-                
-                // Get business account ID from the response
-                // The embedded signup returns the business account ID in the response
-                FB.api('/me', { fields: 'id' }, function(response) {
-                    if (response && response.id) {
-                        // For WhatsApp Business API, we need to get the business account ID
-                        // This is typically done via the Graph API
-                        FB.api('/me/businesses', function(businessResponse) {
-                            if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
-                                const businessAccountId = businessResponse.data[0].id;
-                                
-                                // Call Livewire method to save the data
-                                @this.handleEmbeddedSignup(accessToken, businessAccountId);
-                            } else {
-                                // Fallback: try to get from WhatsApp Business Account
-                                FB.api('/me?fields=whatsapp_business_accounts', function(waResponse) {
-                                    if (waResponse && waResponse.whatsapp_business_accounts && waResponse.whatsapp_business_accounts.data) {
-                                        const businessAccountId = waResponse.whatsapp_business_accounts.data[0].id;
-                                        @this.handleEmbeddedSignup(accessToken, businessAccountId);
-                                    } else {
-                                        console.error('Could not retrieve business account ID');
-                                        showNotification('{{ t("connection_failed") }}', 'danger');
-                                    }
-                                });
-                            }
-                        });
-                    }
-                });
-            }
-        });
+        console.log('✓ Facebook SDK initialized');
     };
 
-    // Render Embedded Signup when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof FB !== 'undefined') {
-            FB.XFBML.parse();
-        } else {
-            // Wait for SDK to load
-            window.addEventListener('fb-sdk-loaded', function() {
-                FB.XFBML.parse();
-            });
-        }
-    });
+    // Launch WhatsApp Embedded Signup
+    window.launchWhatsAppSignup = function() {
+        console.log('=== Starting WhatsApp Embedded Signup ===');
+        
+        let tempAccessCode = '';
+        let phoneNumberId = '';
+        let wabaId = '';
+        let isAppOnboarding = 'NO';
+        let isFinished = false;
+        let setupTimeout = null;
+        let authReceived = false;
+        
+        // Function to send data to backend via Livewire
+        const sendSetupData = function() {
+            if (tempAccessCode && wabaId && !isFinished) {
+                isFinished = true;
+                clearTimeout(setupTimeout);
+                
+                console.log('✓ Sending setup data to backend:', {
+                    waba_id: wabaId,
+                    phone_number_id: phoneNumberId,
+                    is_app_onboarding: isAppOnboarding
+                });
+                
+                // Call Livewire method
+                @this.processEmbeddedSignup(tempAccessCode, wabaId, phoneNumberId, isAppOnboarding);
+            } else {
+                console.warn('⚠ Missing required data:', {
+                    tempAccessCode: !!tempAccessCode,
+                    wabaId: !!wabaId,
+                    phoneNumberId: !!phoneNumberId
+                });
+            }
+        };
+        
+        // Launch Facebook Login
+        FB.login(function(response) {
+            if (response.authResponse) {
+                tempAccessCode = response.authResponse.code;
+                authReceived = true;
+                console.log('✓ Auth code received');
+                
+                if (!tempAccessCode) {
+                    alert('{{ t("failed_to_get_auth_code") }}');
+                } else {
+                    // Start 2-minute timeout after auth code received
+                    setupTimeout = setTimeout(function() {
+                        if (!isFinished && authReceived) {
+                            console.error('✗ Setup timeout - WABA ID not received within 2 minutes');
+                            alert('{{ t("setup_timeout_message") }}');
+                        }
+                    }, 120000); // 2 minutes
+                }
+            } else {
+                console.log('✗ User cancelled login or did not authorize');
+                alert('{{ t("user_cancelled_login") }}');
+            }
+        }, {
+            config_id: '{{ $admin_fb_config_id }}',
+            response_type: 'code',
+            override_default_response_type: true,
+            extras: {
+                setup: {},
+                featureType: '', // or 'whatsapp_business_app_onboarding' if enabled
+                sessionInfoVersion: '3'
+            }
+        });
+        
+        // Listen for postMessage events from Facebook
+        const sessionInfoListener = (event) => {
+            // Only accept messages from Facebook
+            if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") {
+                return;
+            }
+            
+            try {
+                const data = JSON.parse(event.data);
+                console.log('=== Facebook message received ===', data);
+                
+                if (data.type === 'WA_EMBEDDED_SIGNUP') {
+                    console.log('✓ WhatsApp Embedded Signup event:', data.event);
+                    
+                    // Handle FINISH event
+                    if (data.event === 'FINISH' || data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
+                        console.log('✓✓✓ FINISH event received! ✓✓✓');
+                        
+                        const {phone_number_id, waba_id} = data.data;
+                        phoneNumberId = phone_number_id;
+                        wabaId = waba_id;
+                        
+                        console.log('✓ WABA ID:', wabaId);
+                        console.log('✓ Phone Number ID:', phoneNumberId);
+                        
+                        if (data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING') {
+                            isAppOnboarding = 'YES';
+                            console.log('✓ Business App Onboarding mode');
+                        }
+                        
+                        clearTimeout(setupTimeout);
+                        
+                        // Send data immediately if we have auth code, otherwise wait
+                        if (tempAccessCode) {
+                            console.log('✓ Auth code already available, sending now');
+                            sendSetupData();
+                        } else {
+                            console.log('⏳ Waiting for auth code...');
+                            let waitCount = 0;
+                            const waitInterval = setInterval(function() {
+                                waitCount++;
+                                if (tempAccessCode) {
+                                    console.log('✓ Auth code received, sending data');
+                                    clearInterval(waitInterval);
+                                    sendSetupData();
+                                } else if (waitCount >= 30) {
+                                    console.error('✗ Timeout waiting for auth code');
+                                    clearInterval(waitInterval);
+                                    alert('{{ t("failed_to_get_auth_code") }}');
+                                }
+                            }, 100);
+                        }
+                    }
+                    // Handle CANCEL event
+                    else if (data.event === 'CANCEL') {
+                        console.log('✗ Setup cancelled by user');
+                        clearTimeout(setupTimeout);
+                        alert('{{ t("whatsapp_setup_cancelled") }}');
+                    }
+                }
+            } catch (e) {
+                // Non-JSON message, might be auth code in URL format
+                if (typeof event.data === 'string' && event.data.includes('code=')) {
+                    try {
+                        const params = new URLSearchParams(event.data);
+                        const code = params.get('code');
+                        if (code && !tempAccessCode) {
+                            tempAccessCode = code;
+                            console.log('✓ Auth code extracted from URL params');
+                            // Try to send if we have all data
+                            if (wabaId && phoneNumberId) {
+                                sendSetupData();
+                            }
+                        }
+                    } catch (parseError) {
+                        console.log('Could not parse URL params');
+                    }
+                }
+            }
+        };
+        
+        window.addEventListener('message', sessionInfoListener);
+    };
 </script>
 
-{{-- Facebook Embedded Signup Widget --}}
-<div id="fb-root"></div>
 <script>
-    // Render the embedded signup widget
+    // Render the embedded signup button
     document.addEventListener('DOMContentLoaded', function() {
-        if (typeof FB !== 'undefined' && FB.XFBML) {
-            const container = document.getElementById('fb-embedded-signup');
-            if (container) {
-                container.innerHTML = `
-                    <div class="fb-embedded-signup" 
-                         data-config-id="{{ $admin_fb_config_id }}"
-                         data-redirect-uri="{{ tenant_route('tenant.connect') }}"
-                         data-width="100%">
-                    </div>
-                `;
-                FB.XFBML.parse(container);
-            }
+        const container = document.getElementById('fb-embedded-signup');
+        if (container) {
+            container.innerHTML = `
+                <button type="button" 
+                        onclick="launchWhatsAppSignup()"
+                        style="background-color: #1877f2; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; padding: 12px 24px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                    {{ t('connect_with_facebook') }}
+                </button>
+            `;
         }
     });
 </script>
