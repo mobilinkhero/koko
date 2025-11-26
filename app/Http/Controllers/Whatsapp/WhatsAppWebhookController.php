@@ -1695,7 +1695,7 @@ class WhatsAppWebhookController extends Controller
                 }
 
                 // Find trigger node
-                $flowMatched = false; // Track if this flow matched
+                $flowMatchedAsFallback = false; // Track if this flow matched as fallback
                 foreach ($flowData['nodes'] as $node) {
                     if ($node['type'] === 'trigger') {
                         $matchResult = $this->isFlowMatchWithPriority($node, $contactData->type, $triggerMsg);
@@ -1709,7 +1709,7 @@ class WhatsAppWebhookController extends Controller
                                 ]);
                                 $fallbackFlow = $flow;
                                 $fallbackNode = $node;
-                                $flowMatched = true;
+                                $flowMatchedAsFallback = true;
                                 break; // Don't check other trigger nodes in this flow
                             }
 
@@ -1723,11 +1723,6 @@ class WhatsAppWebhookController extends Controller
                             return $this->executeFlowFromStart($flow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
                         }
                     }
-                }
-
-                // If we found a specific match in this flow, don't check other flows
-                if ($flowMatched && !$matchResult['is_fallback']) {
-                    break;
                 }
             }
 
@@ -2072,17 +2067,18 @@ class WhatsAppWebhookController extends Controller
             return false;
         }
 
-        // Find ALL matching trigger nodes (not just the first one)
-        $matchingTriggers = [];
+        // Find the FIRST matching trigger node (not all of them)
+        $matchingTrigger = null;
         foreach ($flowData['nodes'] as $node) {
             if ($node['type'] === 'trigger') {
                 if ($this->isFlowMatch($node, $contactData->type, $triggerMsg)) {
-                    $matchingTriggers[] = $node;
+                    $matchingTrigger = $node;
+                    break; // Only use the first matching trigger
                 }
             }
         }
 
-        if (empty($matchingTriggers)) {
+        if (!$matchingTrigger) {
             whatsapp_log('No matching triggers found', 'warning', [
                 'flow_id' => $flow->id,
                 'trigger_message' => $triggerMsg,
@@ -2091,8 +2087,8 @@ class WhatsAppWebhookController extends Controller
             return false;
         }
 
-        // Use the new method to handle multiple triggers
-        return $this->executeFlowWithMultipleTriggers($flow, $matchingTriggers, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
+        // Execute with the single matching trigger
+        return $this->executeFlowWithMultipleTriggers($flow, [$matchingTrigger], $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
     }
 
     private function findAllTargetNodesFromButtonPress($sourceNodeId, $buttonIndex, $flowData, $interactionType = 'button', $sectionIndex = null, $itemIndex = null)
