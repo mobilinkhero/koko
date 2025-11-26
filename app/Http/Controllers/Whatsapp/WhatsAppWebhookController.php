@@ -1908,6 +1908,12 @@ class WhatsAppWebhookController extends Controller
             ]);
 
             $flows = BotFlow::where(['is_active' => 1, 'tenant_id' => $this->tenant_id])->get();
+            
+            $this->logToDuplicateFile('Checking flows for trigger match', [
+                'trigger_msg' => $triggerMsg,
+                'total_active_flows' => $flows->count(),
+                'flow_names' => $flows->pluck('name', 'id')->toArray(),
+            ]);
 
             // PRIORITY SYSTEM: Check flows in order of specificity
             // 1. Exact match (reply_type=1)
@@ -1967,6 +1973,12 @@ class WhatsAppWebhookController extends Controller
 
             // No specific match found, use fallback if available
             if ($fallbackFlow) {
+                $this->logToDuplicateFile('No specific match, executing fallback flow', [
+                    'flow_id' => $fallbackFlow->id,
+                    'flow_name' => $fallbackFlow->name ?? 'Unknown',
+                    'trigger_node_id' => $fallbackNode['id'],
+                ]);
+                
                 whatsapp_log('No specific match, executing fallback flow', 'info', [
                     'flow_id' => $fallbackFlow->id,
                     'trigger_node_id' => $fallbackNode['id'],
@@ -1976,6 +1988,11 @@ class WhatsAppWebhookController extends Controller
             }
         }
 
+        $this->logToDuplicateFile('No flow execution determined - NO MATCH FOUND', [
+            'trigger_msg' => $triggerMsg,
+            'button_id' => $buttonId,
+        ]);
+        
         whatsapp_log('No flow execution determined', 'info');
 
         return false;
