@@ -59,7 +59,7 @@
                                             {{ t('connect_with_facebook') }}
                                         </button>
                                     </div>
-                                    <div id="fb-embedded-signup" class="w-full" style="display: none;"></div>
+                                    <div id="fb-embedded-signup" class="w-full"></div>
                                 </div>
                             </div>
                         </div>
@@ -548,7 +548,19 @@
                         return true;
                     }
                 }
-                // If we can't access iframe content, try clicking the iframe itself
+                
+                // Try postMessage to trigger embedded signup
+                try {
+                    iframe.contentWindow.postMessage({
+                        type: 'fb-embedded-signup-trigger',
+                        action: 'click'
+                    }, '*');
+                    console.log('Sent postMessage to trigger signup');
+                } catch (e) {
+                    console.log('postMessage failed:', e);
+                }
+                
+                // Try clicking the iframe itself
                 iframe.click();
                 console.log('Clicked iframe directly');
                 return true;
@@ -612,21 +624,60 @@
                     return;
                 }
                 
-                // Last attempt: Force re-render and try again
-                console.log('Forcing widget re-render...');
+                        // Last attempt: Try using Facebook's UI method or direct API call
+                console.log('Trying alternative method to trigger embedded signup...');
+                
+                // Method 1: Try to use FB.ui if available
+                if (typeof FB !== 'undefined' && FB.ui) {
+                    console.log('Attempting FB.ui method...');
+                    // This might not work for embedded signup, but worth trying
+                }
+                
+                // Method 2: Inspect what was actually rendered
                 const container = document.getElementById('fb-embedded-signup');
                 if (container) {
-                    container.innerHTML = '';
-                    renderEmbeddedSignup();
+                    console.log('Container content:', container.innerHTML);
+                    console.log('Container children count:', container.children.length);
                     
-                    // Wait a bit longer for widget to render
-                    setTimeout(function() {
-                        if (!triggerEmbeddedSignup()) {
-                            console.error('Embedded signup widget failed to render. Please check your Facebook Config ID in admin settings.');
-                            alert('Facebook embedded signup is not available. Please ensure the Facebook Config ID is correctly configured in the admin panel.');
+                    // Try to find ANY interactive element
+                    const allElements = container.querySelectorAll('*');
+                    console.log('Total elements in container:', allElements.length);
+                    
+                    for (let i = 0; i < Math.min(allElements.length, 20); i++) {
+                        const el = allElements[i];
+                        console.log(`Element ${i}:`, el.tagName, el.className, el.id, el.getAttribute('role'));
+                    }
+                    
+                    // Method 3: Try clicking the container itself or first child
+                    const firstChild = container.firstElementChild;
+                    if (firstChild) {
+                        console.log('Trying to click first child:', firstChild);
+                        try {
+                            firstChild.click();
+                            return;
+                        } catch (e) {
+                            console.log('First child click failed:', e);
                         }
-                    }, 2000);
+                    }
+                    
+                    // Method 4: Try dispatching click event on container
+                    try {
+                        const clickEvent = new MouseEvent('click', {
+                            view: window,
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        container.dispatchEvent(clickEvent);
+                        console.log('Dispatched click event on container');
+                        return;
+                    } catch (e) {
+                        console.log('Container click dispatch failed:', e);
+                    }
                 }
+                
+                // Final fallback: Show error
+                console.error('Embedded signup widget failed to render. Please check your Facebook Config ID in admin settings.');
+                alert('Facebook embedded signup is not available. Please ensure the Facebook Config ID is correctly configured in the admin panel at /admin/whatsapp-webhook');
             }, 500);
         }
     });
@@ -645,13 +696,16 @@
             return;
         }
         
-        // Make container visible temporarily for rendering (but keep it visually hidden)
+        // Make container visible (but off-screen) so Facebook can render the widget
+        // Facebook's widget needs to be visible to render properly
         container.style.display = 'block';
-        container.style.visibility = 'hidden';
+        container.style.visibility = 'visible';
         container.style.position = 'absolute';
-        container.style.width = '1px';
-        container.style.height = '1px';
-        container.style.opacity = '0';
+        container.style.left = '-9999px';
+        container.style.top = '0';
+        container.style.width = '400px';
+        container.style.height = '50px';
+        container.style.opacity = '1';
         
         // Only render if container is empty
         if (container.innerHTML.trim() === '') {
@@ -663,7 +717,8 @@
                 <div class="fb-embedded-signup" 
                      data-config-id="{{ $admin_fb_config_id }}"
                      data-redirect-uri="{{ url(tenant_route('tenant.connect', [], false)) }}"
-                     data-width="100%">
+                     data-width="100%"
+                     data-onboarding-type="popup">
                 </div>
             `;
             
@@ -680,22 +735,38 @@
         
         // Use MutationObserver to watch for widget rendering
         const observer = new MutationObserver(function(mutations) {
-            findEmbeddedButton();
+            console.log('Container changed, looking for button...');
+            if (findEmbeddedButton()) {
+                observer.disconnect();
+            }
         });
         
         observer.observe(container, {
             childList: true,
             subtree: true,
-            attributes: true
+            attributes: true,
+            characterData: true
         });
         
-        // Also try to find button after delays
-        setTimeout(findEmbeddedButton, 1000);
-        setTimeout(findEmbeddedButton, 2000);
-        setTimeout(findEmbeddedButton, 3000);
-        
-        // Stop observing after 5 seconds
+        // Also try to find button after delays (longer delays for Facebook to render)
         setTimeout(function() {
+            console.log('Checking for button at 1s...');
+            findEmbeddedButton();
+        }, 1000);
+        
+        setTimeout(function() {
+            console.log('Checking for button at 2s...');
+            findEmbeddedButton();
+        }, 2000);
+        
+        setTimeout(function() {
+            console.log('Checking for button at 3s...');
+            findEmbeddedButton();
+        }, 3000);
+        
+        setTimeout(function() {
+            console.log('Checking for button at 5s...');
+            findEmbeddedButton();
             observer.disconnect();
         }, 5000);
     }
@@ -704,8 +775,19 @@
     function findEmbeddedButton() {
         const container = document.getElementById('fb-embedded-signup');
         if (!container) {
-            return;
+            return false;
         }
+        
+        // Log what's actually in the container for debugging
+        console.log('=== DEBUGGING EMBEDDED SIGNUP WIDGET ===');
+        console.log('Container HTML length:', container.innerHTML.length);
+        console.log('Container HTML (first 1000 chars):', container.innerHTML.substring(0, 1000));
+        console.log('Container children count:', container.children.length);
+        
+        // Log all direct children
+        Array.from(container.children).forEach((child, index) => {
+            console.log(`Child ${index}:`, child.tagName, child.className, child.id, child.innerHTML.substring(0, 200));
+        });
         
         const selectors = [
             'button',
@@ -714,7 +796,10 @@
             'iframe',
             'div[role="button"]',
             'a[role="button"]',
-            'span[role="button"]'
+            'span[role="button"]',
+            'div.fb-embedded-signup',
+            '*[onclick]',
+            '*[data-testid]'
         ];
         
         for (let selector of selectors) {
@@ -730,19 +815,61 @@
                     button.style.width = '1px';
                     button.style.height = '1px';
                 }
-                console.log('Facebook embedded signup button found with selector:', selector);
+                console.log('Facebook embedded signup button found with selector:', selector, button);
                 return true;
             }
         }
         
-        // Check iframe
-        const iframe = container.querySelector('iframe');
-        if (iframe) {
-            embeddedSignupButton = iframe;
-            console.log('Facebook embedded signup iframe found');
+        // Check all children recursively
+        function findButtonRecursive(element) {
+            if (!element) return null;
+            
+            // Check if element is clickable
+            if (element.onclick || element.getAttribute('onclick') || 
+                element.getAttribute('role') === 'button' ||
+                element.tagName === 'BUTTON' ||
+                element.tagName === 'A') {
+                return element;
+            }
+            
+            // Check children
+            for (let child of element.children) {
+                const found = findButtonRecursive(child);
+                if (found) return found;
+            }
+            
+            return null;
+        }
+        
+        const foundButton = findButtonRecursive(container);
+        if (foundButton) {
+            embeddedSignupButton = foundButton;
+            console.log('Found button recursively:', foundButton);
             return true;
         }
         
+        // Check iframe - try to communicate with it via postMessage
+        const iframe = container.querySelector('iframe');
+        if (iframe) {
+            embeddedSignupButton = iframe;
+            console.log('Facebook embedded signup iframe found:', iframe.src);
+            
+            // Try to send postMessage to trigger the signup
+            try {
+                iframe.contentWindow.postMessage({
+                    type: 'fb-embedded-signup-trigger',
+                    config_id: '{{ $admin_fb_config_id }}'
+                }, 'https://www.facebook.com');
+                console.log('Sent postMessage to iframe');
+            } catch (e) {
+                console.log('postMessage failed (expected for cross-origin):', e);
+            }
+            
+            return true;
+        }
+        
+        console.log('No button found in container');
+        console.log('Full container structure:', container.outerHTML.substring(0, 2000));
         return false;
     }
     
