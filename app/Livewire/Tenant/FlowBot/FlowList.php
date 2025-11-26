@@ -67,6 +67,7 @@ class FlowList extends Component
     public function createBotFlow()
     {
         $this->resetForm();
+        $this->resetValidation();
         $this->showFlowModal = true;
     }
 
