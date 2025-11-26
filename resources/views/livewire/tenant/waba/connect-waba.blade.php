@@ -49,7 +49,12 @@
                                     <p class="text-xs text-primary-700 dark:text-primary-300 mb-3">
                                         {{ t('emb_signup_info') }}
                                     </p>
-                                    <div id="fb-embedded-signup" class="w-full"></div>
+                                    {{-- Facebook Login Button --}}
+                                    <button type="button" onclick="launchWhatsAppSignup()" 
+                                        style="background-color: #1877f2; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; padding: 12px 24px;">
+                                        <i class="fab fa-facebook mr-2"></i>
+                                        {{ t('connect_with_facebook') }}
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -450,93 +455,204 @@
 
 @if($embedded_signup_configured)
 @push('scripts')
-<script>
-    // Facebook Embedded Signup SDK
-    (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) return;
-        js = d.createElement(s); js.id = id;
-        js.src = "https://connect.facebook.net/en_US/sdk.js";
-        fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
-
-    window.fbAsyncInit = function() {
-        FB.init({
-            appId: '{{ $admin_fb_app_id }}',
-            cookie: true,
-            xfbml: true,
-            version: 'v18.0'
-        });
-
-        // Initialize Embedded Signup
-        FB.Event.subscribe('embedded_signup', function(response) {
-            if (response && response.authResponse) {
-                // Get access token
-                const accessToken = response.authResponse.accessToken;
-                
-                // Get business account ID from the response
-                // The embedded signup returns the business account ID in the response
-                FB.api('/me', { fields: 'id' }, function(response) {
-                    if (response && response.id) {
-                        // For WhatsApp Business API, we need to get the business account ID
-                        // This is typically done via the Graph API
-                        FB.api('/me/businesses', function(businessResponse) {
-                            if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
-                                const businessAccountId = businessResponse.data[0].id;
-                                
-                                // Call Livewire method to save the data
-                                @this.handleEmbeddedSignup(accessToken, businessAccountId);
-                            } else {
-                                // Fallback: try to get from WhatsApp Business Account
-                                FB.api('/me?fields=whatsapp_business_accounts', function(waResponse) {
-                                    if (waResponse && waResponse.whatsapp_business_accounts && waResponse.whatsapp_business_accounts.data) {
-                                        const businessAccountId = waResponse.whatsapp_business_accounts.data[0].id;
-                                        @this.handleEmbeddedSignup(accessToken, businessAccountId);
-                                    } else {
-                                        console.error('Could not retrieve business account ID');
-                                        showNotification('{{ t("connection_failed") }}', 'danger');
-                                    }
-                                });
-                            }
-                        });
-                    }
-                });
-            }
-        });
-    };
-
-    // Render Embedded Signup when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof FB !== 'undefined') {
-            FB.XFBML.parse();
-        } else {
-            // Wait for SDK to load
-            window.addEventListener('fb-sdk-loaded', function() {
-                FB.XFBML.parse();
-            });
-        }
-    });
-</script>
-
-{{-- Facebook Embedded Signup Widget --}}
+{{-- Facebook SDK --}}
 <div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+
 <script>
-    // Render the embedded signup widget
-    document.addEventListener('DOMContentLoaded', function() {
-        if (typeof FB !== 'undefined' && FB.XFBML) {
-            const container = document.getElementById('fb-embedded-signup');
-            if (container) {
-                container.innerHTML = `
-                    <div class="fb-embedded-signup" 
-                         data-config-id="{{ $admin_fb_config_id }}"
-                         data-redirect-uri="{{ tenant_route('tenant.connect') }}"
-                         data-width="100%">
-                    </div>
-                `;
-                FB.XFBML.parse(container);
-            }
-        }
-    });
+    /**
+     * Facebook Embedded Signup Implementation
+     * Based on Chatvvoold system - matches the exact flow
+     * Reference: https://developers.facebook.com/docs/whatsapp/embedded-signup
+     */
+    (function() {
+        'use strict';
+
+        // Initialize Facebook SDK
+        window.fbAsyncInit = function() {
+            FB.init({
+                appId: '{{ $admin_fb_app_id }}',
+                autoLogAppEvents: true,
+                xfbml: true,
+                version: 'v18.0'
+            });
+            
+            console.log('Facebook SDK Initialized');
+        };
+
+        // Launch WhatsApp Embedded Signup
+        window.launchWhatsAppSignup = function() {
+            console.log('Launching WhatsApp Embedded Signup...');
+            
+            var tempAccessCode = '',
+                phoneNumberId = '',
+                waBaId = '',
+                isFinished = false,
+                setupTimeout = null,
+                authReceived = false;
+
+            // Function to send setup data to backend
+            const sendSetupData = function() {
+                if (tempAccessCode && waBaId && !isFinished) {
+                    isFinished = true;
+                    
+                    // Clear timeout since we're sending data
+                    if (setupTimeout) {
+                        clearTimeout(setupTimeout);
+                    }
+
+                    console.log('Sending embedded signup data to backend...', {
+                        waba_id: waBaId,
+                        phone_number_id: phoneNumberId,
+                        has_code: !!tempAccessCode
+                    });
+
+                    // Call Livewire method with proper parameters
+                    @this.handleEmbeddedSignup(tempAccessCode, waBaId, phoneNumberId)
+                        .then(function() {
+                            console.log('Embedded signup processed successfully');
+                        })
+                        .catch(function(error) {
+                            console.error('Embedded signup processing failed:', error);
+                        });
+                } else {
+                    console.warn('Missing required data for embedded signup:', {
+                        tempAccessCode: !!tempAccessCode,
+                        waBaId: !!waBaId,
+                        isFinished: isFinished
+                    });
+                }
+            };
+
+            // Launch Facebook Login with Embedded Signup
+            FB.login(function(response) {
+                if (response.authResponse) {
+                    // Get authorization code
+                    tempAccessCode = response.authResponse.code;
+                    authReceived = true;
+                    console.log('Auth code received from Facebook');
+
+                    if (!tempAccessCode) {
+                        console.error('Failed to get authorization code from Facebook');
+                        return;
+                    }
+
+                    // Start timeout AFTER auth code is received
+                    // Give 2 minutes for user to complete the embedded signup flow
+                    setupTimeout = setTimeout(function() {
+                        if (!isFinished && authReceived) {
+                            console.error('Setup timeout - WABA ID not received within 2 minutes');
+                            alert('{{ t("setup_timeout_message") }}');
+                        }
+                    }, 120000); // 2 minutes timeout
+
+                } else {
+                    if (setupTimeout) {
+                        clearTimeout(setupTimeout);
+                    }
+                    console.log('User cancelled login or did not fully authorize');
+                }
+            }, {
+                config_id: '{{ $admin_fb_config_id }}',
+                response_type: 'code',
+                override_default_response_type: true,
+                extras: {
+                    setup: {},
+                    sessionInfoVersion: '3'
+                }
+            });
+
+            // Listen for session info from Facebook
+            const sessionInfoListener = function(event) {
+                // Accept messages from both www.facebook.com and web.facebook.com
+                if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") {
+                    return;
+                }
+
+                console.log('Message received from Facebook:', event.origin);
+
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Facebook message data:', data);
+
+                    if (data.type === 'WA_EMBEDDED_SIGNUP') {
+                        console.log('WhatsApp Embedded Signup event:', data.event);
+
+                        // If user finishes the Embedded Signup flow
+                        if (data.event === 'FINISH') {
+                            console.log('FINISH event received!');
+                            const { phone_number_id, waba_id } = data.data;
+                            phoneNumberId = phone_number_id;
+                            waBaId = waba_id;
+
+                            console.log('Extracted WABA ID:', waBaId);
+                            console.log('Extracted Phone Number ID:', phoneNumberId);
+
+                            // Clear timeout since we received the data
+                            if (setupTimeout) {
+                                clearTimeout(setupTimeout);
+                            }
+
+                            // Check if we have auth code, if not wait for it
+                            if (tempAccessCode) {
+                                console.log('Auth code already available, sending immediately');
+                                sendSetupData();
+                            } else {
+                                console.log('Waiting for auth code...');
+                                // Wait up to 3 seconds for auth code
+                                let waitCount = 0;
+                                const waitInterval = setInterval(function() {
+                                    waitCount++;
+                                    if (tempAccessCode) {
+                                        console.log('Auth code received, sending data now');
+                                        clearInterval(waitInterval);
+                                        sendSetupData();
+                                    } else if (waitCount >= 30) { // 3 seconds
+                                        console.error('Timeout waiting for auth code');
+                                        clearInterval(waitInterval);
+                                        alert('{{ t("setup_failed_no_auth_code") }}');
+                                    }
+                                }, 100);
+                            }
+                        } 
+                        // If user cancels the Embedded Signup flow
+                        else if (data.event === 'CANCEL') {
+                            console.log('Setup cancelled by user');
+                            if (setupTimeout) {
+                                clearTimeout(setupTimeout);
+                            }
+                        } else {
+                            console.log('Other event received:', data.event);
+                        }
+                    }
+                } catch (e) {
+                    // Non-JSON message received
+                    console.log('Non-JSON message:', event.data);
+
+                    // Try to extract code from URL-encoded string
+                    if (typeof event.data === 'string' && event.data.includes('code=')) {
+                        try {
+                            const params = new URLSearchParams(event.data);
+                            const code = params.get('code');
+                            if (code && !tempAccessCode) {
+                                tempAccessCode = code;
+                                console.log('Auth code extracted from URL params');
+                                // Try to send data if we have everything
+                                if (waBaId && phoneNumberId) {
+                                    sendSetupData();
+                                }
+                            }
+                        } catch (parseError) {
+                            console.log('Could not parse URL params');
+                        }
+                    }
+                }
+            };
+
+            // Add event listener for Facebook messages
+            window.addEventListener('message', sessionInfoListener);
+        };
+    })();
 </script>
 @endpush
 @endif

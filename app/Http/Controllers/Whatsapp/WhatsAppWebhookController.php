@@ -1695,12 +1695,13 @@ class WhatsAppWebhookController extends Controller
                 }
 
                 // Find trigger node
+                $flowMatched = false; // Track if this flow matched
                 foreach ($flowData['nodes'] as $node) {
                     if ($node['type'] === 'trigger') {
                         $matchResult = $this->isFlowMatchWithPriority($node, $contactData->type, $triggerMsg);
 
                         if ($matchResult['matched']) {
-                            // If this is a fallback trigger, save it but continue checking
+                            // If this is a fallback trigger, save it but continue checking OTHER flows
                             if ($matchResult['is_fallback']) {
                                 whatsapp_log('Found fallback flow, saving for later', 'info', [
                                     'flow_id' => $flow->id,
@@ -1708,7 +1709,8 @@ class WhatsAppWebhookController extends Controller
                                 ]);
                                 $fallbackFlow = $flow;
                                 $fallbackNode = $node;
-                                continue; // Keep looking for specific matches
+                                $flowMatched = true;
+                                break; // Don't check other trigger nodes in this flow
                             }
 
                             // This is a specific match (exact/contains/first-time) - execute immediately
@@ -1721,6 +1723,11 @@ class WhatsAppWebhookController extends Controller
                             return $this->executeFlowFromStart($flow, $contactData, $triggerMsg, $chatId, $contactNumber, $phoneNumberId);
                         }
                     }
+                }
+
+                // If we found a specific match in this flow, don't check other flows
+                if ($flowMatched && !$matchResult['is_fallback']) {
+                    break;
                 }
             }
 
@@ -1748,7 +1755,7 @@ class WhatsAppWebhookController extends Controller
         $result = $this->isFlowMatchWithPriority($triggerNode, $relType, $trigger);
         return $result['matched'];
     }
-    
+
     /**
      * Check if flow matches with priority information
      * Returns array with 'matched', 'is_fallback', and 'match_type'
@@ -1770,7 +1777,7 @@ class WhatsAppWebhookController extends Controller
         // Check each output rule
         foreach ($output as $rule) {
             // Check relation type match
-            if (! empty($rule['rel_type']) && $rule['rel_type'] !== $relType) {
+            if (!empty($rule['rel_type']) && $rule['rel_type'] !== $relType) {
                 whatsapp_log('Relation type mismatch', 'debug', [
                     'trigger_id' => $triggerNode['id'] ?? 'unknown',
                     'expected_rel_type' => $rule['rel_type'],
@@ -1809,7 +1816,7 @@ class WhatsAppWebhookController extends Controller
 
                 case 2: // Contains - HIGH PRIORITY
                     foreach ($triggers as $t) {
-                        if (! empty($t) && stripos($trigger, $t) !== false) {
+                        if (!empty($t) && stripos($trigger, $t) !== false) {
                             whatsapp_log('Contains match found', 'info', [
                                 'trigger_id' => $triggerNode['id'] ?? 'unknown',
                                 'matched_trigger' => $t,
