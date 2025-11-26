@@ -2255,6 +2255,11 @@ trait WhatsApp
         $this->logToAiFile($logFile, "NODE DATA: " . json_encode($nodeData));
 
         try {
+            // Get tenant ID first (needed for security checks)
+            $tenantId = $this->wa_tenant_id ?? tenant_id();
+
+            $this->logToAiFile($logFile, "TENANT ID: " . ($tenantId ?? 'N/A'));
+
             // ✅ CORRECT: Get selected assistant ID from node data
             $selectedAssistantId = $nodeData['selectedAssistantId'] ?? null;
 
@@ -2316,7 +2321,7 @@ trait WhatsApp
             // Get contact information for thread persistence
             $contactId = $contactData->id ?? null;
             $contactPhone = $to;
-            $tenantId = $this->wa_tenant_id ?? tenant_id();
+            // $tenantId already defined at the top of try block
 
             $this->logToAiFile($logFile, "CONTACT INFO:");
             $this->logToAiFile($logFile, "  - Contact ID: " . ($contactId ?? 'N/A'));
