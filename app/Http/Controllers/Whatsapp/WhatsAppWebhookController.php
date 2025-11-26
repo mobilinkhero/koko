@@ -41,6 +41,10 @@ class WhatsAppWebhookController extends Controller
 
     protected $ecommerceHandledMessage = false;
 
+    protected $currentRequestId = null;
+
+    protected $currentMessageId = null;
+
     /**
      * Log to dedicated duplicate tracking file
      */
@@ -140,7 +144,7 @@ class WhatsAppWebhookController extends Controller
             $this->setWaTenantId($this->tenant_id);
 
             // Generate unique request ID for tracking
-            $requestId = uniqid('req_', true);
+            $this->currentRequestId = uniqid('req_', true);
 
             whatsapp_log(
                 'Webhook Payload Received',
@@ -155,6 +159,7 @@ class WhatsAppWebhookController extends Controller
 
             // Check for message ID to prevent duplicate processing
             $message_id = $payload['entry'][0]['changes'][0]['value']['messages'][0]['id'] ?? '';
+            $this->currentMessageId = $message_id;
             $message_from = $payload['entry'][0]['changes'][0]['value']['messages'][0]['from'] ?? '';
             $message_text = $payload['entry'][0]['changes'][0]['value']['messages'][0]['text']['body'] ?? 
                            $payload['entry'][0]['changes'][0]['value']['messages'][0]['button']['text'] ?? 
@@ -162,7 +167,7 @@ class WhatsAppWebhookController extends Controller
 
             // LOG STAGE 1: Webhook Received
             $this->logDuplicateTracking('1_WEBHOOK_RECEIVED', [
-                'request_id' => $requestId,
+                'request_id' => $this->currentRequestId,
                 'message_id' => $message_id,
                 'from' => $message_from,
                 'message_text' => $message_text,
@@ -172,9 +177,9 @@ class WhatsAppWebhookController extends Controller
             if (!empty($message_id)) {
                 // LOG STAGE 2: Attempting Lock
                 $this->logDuplicateTracking('2_ATTEMPTING_LOCK', [
-                    'request_id' => $requestId,
-                    'message_id' => $message_id,
-                    'lock_key' => 'whatsapp_msg_' . $message_id,
+                    'request_id' => $this->currentRequestId,
+                    'message_id' => $this->currentMessageId,
+                    'lock_key' => 'whatsapp_msg_' . $this->currentMessageId,
                     'lock_ttl' => 10,
                 ]);
 

@@ -415,4 +415,83 @@ This will help identify the exact cause!
 
 ---
 
-**Status**: ✅ Fix Applied - Awaiting Testing & Log Review
+---
+
+## 🆕 NEW FIX: Old Bots + Flows Duplicate Prevention
+
+### Issue #3: Both Old Bots AND New Flows Responding
+**Location**: `app/Http/Controllers/Whatsapp/WhatsAppWebhookController.php` (Lines 648-676)
+
+**Problem**: 
+- If tenant had NO active flows, old bots would process (lines 524-629)
+- Then code would fall through to `process_flows:` label (line 648)
+- Flow processing would STILL execute even though old bot already responded
+- **Result**: BOTH old bot AND flow sent responses = DUPLICATE!
+
+**Solution**: Check if old bots responded before processing flows
+```php
+// At process_flows label (line 648)
+$oldBotResponded = isset($bot_responded) && $bot_responded === true;
+
+if ($oldBotResponded) {
+    // Skip flow - old bot already handled it
+    whatsapp_log('Skipping flow processing - old bot already responded');
+} elseif ($this->ecommerceHandledMessage) {
+    // Skip flow - ecommerce already handled it
+    whatsapp_log('Skipping flow processing - ecommerce handled');
+} else {
+    // Only NOW process flows if nothing else responded
+    $this->processBotFlow($message_data);
+}
+```
+
+**Result**: Flows only execute when NO other bot system has responded
+
+---
+
+## 📊 NEW: Comprehensive Duplicate Tracking Log
+
+**Log File**: `storage/logs/whatsappmessageduplicate.log`
+
+Added detailed logging at 11 key stages to track EVERY step of message processing:
+
+### Logging Stages:
+1. **WEBHOOK_RECEIVED** - Webhook arrives from WhatsApp
+2. **ATTEMPTING_LOCK** - Before cache lock
+3. **LOCK_ACQUIRED** / **LOCK_FAILED** - Lock status
+4. **MESSAGE_IS_NEW** / **DUPLICATE_DETECTED_IN_DB** - Duplicate check
+5. **CHECK_ACTIVE_FLOWS** - Flow system availability
+6. **FOUND_OLD_BOTS** - Old bots matching trigger
+7. **SENDING_TEMPLATE_BOT** / **SENDING_MESSAGE_BOT** - Bot execution
+8. **TEMPLATE_BOT_SENT** / **MESSAGE_BOT_SENT** - Response sent
+9. **FLOW_PROCESSING_DECISION** - Decision logic
+10. **SKIPPING_FLOW_OLD_BOT** / **SKIPPING_FLOW_ECOMMERCE** / **PROCESSING_FLOW** - Action taken
+11. **FLOW_PROCESSING_COMPLETE** - Flow finished
+
+### What Gets Logged:
+- Request ID (unique per webhook)
+- Message ID (from WhatsApp)
+- Sender phone number
+- Message text
+- Which bots matched (IDs and counts)
+- Which bot/system responded
+- Why other systems were skipped
+- Duplicate prevention flags
+
+### View Logs:
+```bash
+# View recent tracking
+tail -100 storage/logs/whatsappmessageduplicate.log
+
+# Check for prevented duplicates
+grep "prevented_duplicate" storage/logs/whatsappmessageduplicate.log
+
+# Find duplicates (should be empty)
+grep -A 5 "MESSAGE_BOT_SENT" storage/logs/whatsappmessageduplicate.log | grep "PROCESSING_FLOW"
+```
+
+**Full Documentation**: See `DUPLICATE_MESSAGE_TRACKING_LOG.md`
+
+---
+
+**Status**: ✅ Fix Applied + Comprehensive Logging Added - Ready for Testing
