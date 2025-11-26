@@ -183,6 +183,31 @@ class WhatsAppWebhookController extends Controller
                 return;
             }
 
+            // CRITICAL FIX: Insert placeholder IMMEDIATELY to block parallel webhooks
+            // This prevents race condition during long-running flows (AI calls, etc.)
+            try {
+                // Get sender info
+                $from = $payload['entry'][0]['changes'][0]['value']['messages'][0]['from'] ?? '';
+                
+                // Insert minimal placeholder record
+                \App\Models\Tenant\ChatMessage::fromTenant($this->tenant_subdoamin)->insert([
+                    'interaction_id' => 0, // Temporary - will be updated by processIncomingMessages
+                    'sender_id' => $from,
+                    'message_id' => $message_id,
+                    'message' => '...', // Placeholder - will be updated
+                    'type' => 'text',
+                    'status' => 'processing',
+                    'time_sent' => now(),
+                    'tenant_id' => $this->tenant_id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } catch (\Exception $e) {
+                // If insert fails (duplicate key), another webhook beat us - release and exit
+                \Illuminate\Support\Facades\DB::select("SELECT RELEASE_LOCK(?)", [$lockKey]);
+                return;
+            }
+
             try {
                 // Process payload directly
                 $this->processPayloadData($payload);
@@ -893,6 +918,26 @@ class WhatsAppWebhookController extends Controller
         array $metadata,
         string $url = ''
     ) {
+        // Check if placeholder exists (from duplicate prevention)
+        $existing = ChatMessage::fromTenant($this->tenant_subdoamin)
+            ->where('message_id', $message_id)
+            ->first();
+
+        if ($existing) {
+            // Update placeholder with actual data
+            $existing->update([
+                'interaction_id' => $interaction_id,
+                'message' => $message,
+                'type' => $messageType,
+                'status' => 'sent',
+                'ref_message_id' => $ref_message_id,
+                'url' => $url,
+                'updated_at' => now(),
+            ]);
+            return $existing->id;
+        }
+
+        // Insert new record
         return ChatMessage::fromTenant($this->tenant_subdoamin)->insertGetId([
             'interaction_id' => $interaction_id,
             'sender_id' => $from,
