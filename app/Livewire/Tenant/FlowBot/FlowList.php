@@ -64,15 +64,7 @@ class FlowList extends Component
         ];
     }
     
-    /**
-     * Livewire hook: Called when botFlow.name is updated
-     */
-    public function updatedBotFlowName($value)
-    {
-        // Clear validation error for name field when user types
-        $this->resetValidation('botFlow.name');
-    }
-
+    
     public function createBotFlow()
     {
         $this->resetForm();
