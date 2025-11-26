@@ -2229,9 +2229,6 @@ trait WhatsApp
             'response_preview' => substr($aiResponse, 0, 100) . '...',
         ]);
 
-        // Store AI response in context for chat history display
-        $context['ai_response'] = $aiResponse;
-
         $messageData = [
             'rel_type' => $contactData->type ?? 'guest',
             'rel_id' => $contactData->id ?? '',
@@ -2247,9 +2244,13 @@ trait WhatsApp
 
         $result = $this->sendMessage($to, $messageData, $phoneNumberId);
 
+        // Store AI response in result for chat history display
+        $result['ai_response'] = $aiResponse;
+
         $this->logFlowDebug('AI Assistant - Message Send Result', [
             'status' => $result['status'] ?? 'unknown',
             'response_code' => $result['responseCode'] ?? 'unknown',
+            'ai_response_stored' => !empty($result['ai_response']),
         ]);
 
         return $result;
@@ -2494,12 +2495,16 @@ trait WhatsApp
                 $this->logToAiFile($logFile, "  - Response Code: " . ($sendResult['responseCode'] ?? 'unknown'));
                 $this->logToAiFile($logFile, "  - Full Result: " . json_encode($sendResult));
 
+                // Store AI response in result for chat history display
+                $sendResult['ai_response'] = $aiResponseText;
+
                 // Log final result to flow debug
                 $this->logFlowDebug('AI Assistant - Message Send Result', [
                     'status' => $sendResult['status'] ?? 'UNKNOWN',
                     'response_code' => $sendResult['responseCode'] ?? 'UNKNOWN',
                     'message_sent' => ($sendResult['status'] ?? false) ? 'Yes' : 'No',
                     'to' => $to,
+                    'ai_response_stored' => !empty($sendResult['ai_response']),
                     'full_result' => $sendResult,
                 ]);
 

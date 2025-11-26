@@ -2795,10 +2795,10 @@ class WhatsAppWebhookController extends Controller
             }
 
             // Build the HTML content for chat display using existing pattern
-            $messageHtml = $this->buildFlowMessageHtml($nodeType, $nodeData, $contactData, $context);
+            $messageHtml = $this->buildFlowMessageHtml($result, $nodeType, $nodeData, $contactData, $context);
 
             // Extract plain text for last_message updates
-            $plainTextMessage = $this->extractPlainTextFromFlowMessage($nodeType, $nodeData, $contactData);
+            $plainTextMessage = $this->extractPlainTextFromFlowMessage($result, $nodeType, $nodeData, $contactData);
 
             // Store in chat_messages table using existing structure
             $chat_message = [
@@ -2905,7 +2905,7 @@ class WhatsAppWebhookController extends Controller
         return $messageId;
     }
 
-    private function buildFlowMessageHtml($nodeType, $nodeData, $contactData, $context)
+    private function buildFlowMessageHtml($result, $nodeType, $nodeData, $contactData, $context)
     {
         $output = $nodeData['output'][0] ?? [];
 
@@ -3069,8 +3069,8 @@ class WhatsAppWebhookController extends Controller
                 return $contactHtml;
 
             case 'aiAssistant':
-                // Extract AI response from context (stored by sendFlowAiMessage)
-                $aiResponse = $context['ai_response'] ?? null;
+                // Extract AI response from result (stored by sendFlowAiMessage)
+                $aiResponse = $result['ai_response'] ?? null;
                 
                 if ($aiResponse) {
                     return '<p>' . nl2br(decodeWhatsAppSigns(e($aiResponse))) . '</p>';
@@ -3089,7 +3089,7 @@ class WhatsAppWebhookController extends Controller
         }
     }
 
-    private function extractPlainTextFromFlowMessage($nodeType, $nodeData, $contactData)
+    private function extractPlainTextFromFlowMessage($result, $nodeType, $nodeData, $contactData)
     {
         $output = $nodeData['output'][0] ?? [];
 
@@ -3130,8 +3130,8 @@ class WhatsAppWebhookController extends Controller
                 return 'Contact' . (count($contacts) > 1 ? 's' : '') . ' shared (' . count($contacts) . ')';
 
             case 'aiAssistant':
-                // Extract AI response from context
-                $aiResponse = $context['ai_response'] ?? null;
+                // Extract AI response from result
+                $aiResponse = $result['ai_response'] ?? null;
                 
                 if ($aiResponse) {
                     // Return first 100 chars for preview
