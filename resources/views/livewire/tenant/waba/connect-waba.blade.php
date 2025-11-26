@@ -37,58 +37,56 @@
                     <x-slot:content>
                         @if($embedded_signup_configured)
                         {{-- Embedded Signup Option --}}
-                        <div class="mb-6 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
-                            <div class="flex items-start space-x-3">
-                                <div class="flex-shrink-0">
-                                    <x-heroicon-o-sparkles class="h-6 w-6 text-primary-600 dark:text-primary-400" />
+                        <div class="mb-6 p-6 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+                            <div class="text-center">
+                                <div class="flex items-center justify-center mb-3">
+                                    <x-heroicon-o-sparkles class="h-8 w-8 text-primary-600 dark:text-primary-400" />
                                 </div>
-                                <div class="flex-1">
-                                    <h4 class="text-sm font-semibold text-primary-900 dark:text-primary-100 mb-1">
-                                        {{ t('embedded_signup') }}
-                                    </h4>
-                                    <p class="text-xs text-primary-700 dark:text-primary-300 mb-3">
-                                        {{ t('emb_signup_info') }}
-                                    </p>
-                                    {{-- Facebook Login Button with Loading State --}}
-                                    <div x-data="{ 
-                                        embeddedLoading: false,
-                                        init() {
-                                            window.addEventListener('reset-embedded-loading', () => {
-                                                this.embeddedLoading = false;
-                                            });
-                                        }
-                                    }" class="inline-block">
-                                        <button type="button" 
-                                            @click="embeddedLoading = true; launchWhatsAppSignup()" 
-                                            :disabled="embeddedLoading"
-                                            id="fb-connect-btn"
-                                            class="inline-flex items-center justify-center transition-all duration-200"
-                                            style="background-color: #1877f2; border: 0; border-radius: 6px; color: #fff; cursor: pointer; font-family: Helvetica, Arial, sans-serif; font-size: 16px; font-weight: bold; padding: 12px 24px; min-width: 250px;"
-                                            :style="embeddedLoading ? 'opacity: 0.7; cursor: not-allowed;' : ''">
-                                            
-                                            {{-- Loading Spinner --}}
-                                            <svg x-show="embeddedLoading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            
-                                            {{-- Facebook Icon --}}
-                                            <i x-show="!embeddedLoading" class="fab fa-facebook mr-2"></i>
-                                            
-                                            {{-- Button Text --}}
-                                            <span x-text="embeddedLoading ? '{{ t('connecting') ?? 'Connecting...' }}' : '{{ t('connect_with_facebook') }}'"></span>
-                                        </button>
+                                <h4 class="text-lg font-semibold text-primary-900 dark:text-primary-100 mb-2">
+                                    {{ t('embedded_signup') ?? 'Embedded Signup' }}
+                                </h4>
+                                <p class="text-sm text-primary-700 dark:text-primary-300 mb-6 max-w-2xl mx-auto">
+                                    {{ t('emb_signup_info') ?? 'Seamlessly authenticate users with their Facebook account using our embedded sign-in feature. No redirects, just smooth onboarding' }}
+                                </p>
+                                
+                                {{-- Facebook Login Button with Loading State --}}
+                                <div x-data="{ 
+                                    embeddedLoading: false,
+                                    init() {
+                                        window.addEventListener('reset-embedded-loading', () => {
+                                            this.embeddedLoading = false;
+                                        });
+                                    }
+                                }" class="flex flex-col items-center">
+                                    <button type="button" 
+                                        @click="embeddedLoading = true; launchWhatsAppSignup()" 
+                                        :disabled="embeddedLoading"
+                                        id="fb-connect-btn"
+                                        class="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-300"
+                                        :class="embeddedLoading ? 'opacity-70 cursor-not-allowed' : 'hover:bg-blue-700'"
+                                        style="background-color: #1877f2; min-width: 300px;">
                                         
-                                        {{-- Loading Status Message --}}
-                                        <div x-show="embeddedLoading" x-cloak class="mt-3 text-sm text-primary-700 dark:text-primary-300">
-                                            <div class="flex items-center space-x-2">
-                                                <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                <span>{{ t('please_wait_connecting') ?? 'Please wait while we connect to Facebook...' }}</span>
-                                            </div>
-                                        </div>
+                                        {{-- Loading Spinner --}}
+                                        <svg x-show="embeddedLoading" x-cloak class="animate-spin -ml-1 mr-3 h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        
+                                        {{-- Facebook Icon --}}
+                                        <i x-show="!embeddedLoading" class="fab fa-facebook text-2xl mr-3"></i>
+                                        
+                                        {{-- Button Text --}}
+                                        <span x-show="!embeddedLoading">{{ t('connect_with_facebook') ?? 'Connect with Facebook' }}</span>
+                                        <span x-show="embeddedLoading" x-cloak>{{ t('connecting') ?? 'Connecting' }}...</span>
+                                    </button>
+                                    
+                                    {{-- Loading Status Message --}}
+                                    <div x-show="embeddedLoading" x-cloak class="mt-4 flex items-center space-x-2 text-sm text-primary-700 dark:text-primary-300">
+                                        <svg class="animate-spin h-4 w-4 text-primary-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Please wait while we connect to Facebook...</span>
                                     </div>
                                 </div>
                             </div>
