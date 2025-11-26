@@ -28,7 +28,7 @@ class PersonalAssistantManager extends Component
     public $currentMessage = '';
     public $showDetailsModal = false;
     public $detailsAssistantId = null;
-    
+
     // Form fields
     public $name = '';
     public $description = '';
@@ -104,7 +104,7 @@ class PersonalAssistantManager extends Component
         // Load all assistants for current tenant instead of just one
         $this->assistants = PersonalAssistant::getAllForCurrentTenant();
         $this->assistant = $this->assistants->first(); // For compatibility with existing form logic
-        
+
         if ($this->assistant) {
             $this->name = $this->assistant->name;
             $this->description = $this->assistant->description;
@@ -123,7 +123,7 @@ class PersonalAssistantManager extends Component
     {
         $this->resetForm();
         $this->showCreateForm = true;
-        
+
         // Set default instructions based on use cases
         $this->system_instructions = $this->getDefaultInstructions();
     }
@@ -181,11 +181,11 @@ class PersonalAssistantManager extends Component
             if (!empty($this->files)) {
                 $fileService = new PersonalAssistantFileService();
                 $result = $fileService->uploadFiles($assistant, $this->files);
-                
+
                 if (!$result['success']) {
                     throw new \Exception('File processing failed');
                 }
-                
+
                 session()->flash('file-upload-success', "Processed {$result['files_processed']} files successfully");
             }
 
@@ -194,9 +194,9 @@ class PersonalAssistantManager extends Component
             $this->assistant = $assistant;
             $this->showCreateForm = false;
             $this->files = [];
-            
+
             session()->flash('success', $this->assistant->wasRecentlyCreated ? 'Personal assistant created successfully!' : 'Personal assistant updated successfully!');
-            
+
             $this->dispatch('assistant-saved');
 
         } catch (\Exception $e) {
@@ -215,15 +215,15 @@ class PersonalAssistantManager extends Component
             // Clear all files first
             $fileService = new PersonalAssistantFileService();
             $fileService->clearAllFiles($this->assistant);
-            
+
             // Delete assistant
             $this->assistant->delete();
-            
+
             $this->assistant = null;
             session()->flash('success', 'Personal assistant deleted successfully!');
-            
+
             $this->dispatch('assistant-deleted');
-            
+
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to delete assistant: ' . $e->getMessage());
         }
@@ -238,10 +238,10 @@ class PersonalAssistantManager extends Component
         try {
             $fileService = new PersonalAssistantFileService();
             $fileService->removeFile($this->assistant, $fileName);
-            
+
             $this->loadAssistant(); // Refresh data
             session()->flash('success', 'File removed successfully!');
-            
+
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to remove file: ' . $e->getMessage());
         }
@@ -256,10 +256,10 @@ class PersonalAssistantManager extends Component
         try {
             $fileService = new PersonalAssistantFileService();
             $fileService->clearAllFiles($this->assistant);
-            
+
             $this->loadAssistant(); // Refresh data
             session()->flash('success', 'All files cleared successfully!');
-            
+
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to clear files: ' . $e->getMessage());
         }
@@ -279,7 +279,7 @@ class PersonalAssistantManager extends Component
     public function toggleAssistant($assistantId = null)
     {
         $assistant = $assistantId ? PersonalAssistant::find($assistantId) : $this->assistant;
-        
+
         if (!$assistant) {
             return;
         }
@@ -288,13 +288,13 @@ class PersonalAssistantManager extends Component
             $assistant->update([
                 'is_active' => !$assistant->is_active
             ]);
-            
+
             $status = $assistant->is_active ? 'activated' : 'deactivated';
             session()->flash('success', "Assistant {$status} successfully!");
-            
+
             // Refresh the assistant data
             $this->loadAssistant();
-            
+
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to toggle assistant: ' . $e->getMessage());
         }
@@ -302,14 +302,25 @@ class PersonalAssistantManager extends Component
 
     public function editSpecificAssistant($assistantId)
     {
-        $assistant = PersonalAssistant::find($assistantId);
-        if (!$assistant) {
+        // SECURITY: Verify assistant belongs to current tenant
+        $tenant = PersonalAssistant::getCurrentTenant();
+        if (!$tenant) {
+            session()->flash('error', 'Unable to determine current tenant');
             return;
         }
-        
+
+        $assistant = PersonalAssistant::where('id', $assistantId)
+            ->where('tenant_id', $tenant->id)
+            ->first();
+
+        if (!$assistant) {
+            session()->flash('error', 'Assistant not found or access denied');
+            return;
+        }
+
         $this->editingAssistantId = $assistantId;
         $this->assistant = $assistant;
-        
+
         $this->name = $assistant->name;
         $this->description = $assistant->description;
         $this->system_instructions = $assistant->system_instructions;
@@ -318,14 +329,25 @@ class PersonalAssistantManager extends Component
         $this->max_tokens = $assistant->max_tokens;
         $this->use_case_tags = $assistant->use_case_tags ?? [];
         $this->file_analysis_enabled = $assistant->file_analysis_enabled;
-        
+
         $this->showCreateForm = true;
     }
 
     public function deleteSpecificAssistant($assistantId)
     {
-        $assistant = PersonalAssistant::find($assistantId);
+        // SECURITY: Verify assistant belongs to current tenant
+        $tenant = PersonalAssistant::getCurrentTenant();
+        if (!$tenant) {
+            session()->flash('error', 'Unable to determine current tenant');
+            return;
+        }
+
+        $assistant = PersonalAssistant::where('id', $assistantId)
+            ->where('tenant_id', $tenant->id)
+            ->first();
+
         if (!$assistant) {
+            session()->flash('error', 'Assistant not found or access denied');
             return;
         }
 
@@ -333,13 +355,13 @@ class PersonalAssistantManager extends Component
             // Clear all files first
             $fileService = new PersonalAssistantFileService();
             $fileService->clearAllFiles($assistant);
-            
+
             // Delete assistant
             $assistant->delete();
-            
+
             session()->flash('success', 'Assistant deleted successfully!');
             $this->loadAssistant();
-            
+
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to delete assistant: ' . $e->getMessage());
         }
@@ -347,9 +369,19 @@ class PersonalAssistantManager extends Component
 
     public function syncAssistant($assistantId)
     {
-        $assistant = PersonalAssistant::find($assistantId);
+        // SECURITY: Verify assistant belongs to current tenant
+        $tenant = PersonalAssistant::getCurrentTenant();
+        if (!$tenant) {
+            session()->flash('error', 'Unable to determine current tenant');
+            return;
+        }
+
+        $assistant = PersonalAssistant::where('id', $assistantId)
+            ->where('tenant_id', $tenant->id)
+            ->first();
+
         if (!$assistant) {
-            session()->flash('error', 'Assistant not found');
+            session()->flash('error', 'Assistant not found or access denied');
             return;
         }
 
@@ -382,22 +414,32 @@ class PersonalAssistantManager extends Component
 
             session()->flash('success', $message);
             $this->loadAssistant();
-            
+
         } catch (\Exception $e) {
             Log::error('Sync Assistant Error', [
                 'assistant_id' => $assistantId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            
+
             session()->flash('error', 'Failed to sync assistant: ' . $e->getMessage());
         }
     }
 
     public function openChat($assistantId)
     {
-        $assistant = PersonalAssistant::find($assistantId);
+        // SECURITY: Verify assistant belongs to current tenant
+        $tenant = PersonalAssistant::getCurrentTenant();
+        if (!$tenant) {
+            return;
+        }
+
+        $assistant = PersonalAssistant::where('id', $assistantId)
+            ->where('tenant_id', $tenant->id)
+            ->first();
+
         if (!$assistant) {
+            session()->flash('error', 'Assistant not found or access denied');
             return;
         }
 
@@ -417,6 +459,21 @@ class PersonalAssistantManager extends Component
 
     public function openDetails($assistantId)
     {
+        // SECURITY: Verify assistant belongs to current tenant before opening details
+        $tenant = PersonalAssistant::getCurrentTenant();
+        if (!$tenant) {
+            return;
+        }
+
+        $assistant = PersonalAssistant::where('id', $assistantId)
+            ->where('tenant_id', $tenant->id)
+            ->first();
+
+        if (!$assistant) {
+            session()->flash('error', 'Assistant not found or access denied');
+            return;
+        }
+
         $this->detailsAssistantId = $assistantId;
         $this->showDetailsModal = true;
     }
@@ -492,7 +549,7 @@ class PersonalAssistantManager extends Component
 
         // Show typing indicator
         $this->chatMessages[] = [
-            'role' => 'assistant', 
+            'role' => 'assistant',
             'content' => 'typing',
             'timestamp' => now()->format('h:i A')
         ];
@@ -502,14 +559,14 @@ class PersonalAssistantManager extends Component
         try {
             // Build context from uploaded documents
             $context = $this->buildContextFromDocuments($assistant);
-            
+
             // Build conversation history for AI
             $messages = [
                 [
                     'role' => 'system',
-                    'content' => $assistant->system_instructions . "\n\n" . 
-                                "You have access to the following documents and information:\n" . 
-                                $context
+                    'content' => $assistant->system_instructions . "\n\n" .
+                        "You have access to the following documents and information:\n" .
+                        $context
                 ]
             ];
 
@@ -533,7 +590,7 @@ class PersonalAssistantManager extends Component
 
             // Remove typing indicator
             array_pop($this->chatMessages);
-            
+
             // Add AI response
             $this->chatMessages[] = [
                 'role' => 'assistant',
@@ -544,14 +601,14 @@ class PersonalAssistantManager extends Component
         } catch (\Exception $e) {
             // Remove typing indicator
             array_pop($this->chatMessages);
-            
+
             // Show error message
             $this->chatMessages[] = [
                 'role' => 'assistant',
                 'content' => 'I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.',
                 'timestamp' => now()->format('h:i A')
             ];
-            
+
             Log::error('AI Chat Error: ' . $e->getMessage());
         }
 
@@ -561,12 +618,12 @@ class PersonalAssistantManager extends Component
     private function buildContextFromDocuments($assistant)
     {
         $context = '';
-        
+
         // Add processed content if available
         if ($assistant->processed_content) {
             $context .= "Processed Knowledge Base:\n" . $assistant->processed_content . "\n\n";
         }
-        
+
         // Add file information
         if ($assistant->hasUploadedFiles()) {
             $context .= "Available Documents:\n";
@@ -575,7 +632,7 @@ class PersonalAssistantManager extends Component
                 $context .= "- {$file['original_name']}: {$fileContent}\n";
             }
         }
-        
+
         return $context;
     }
 
@@ -584,7 +641,7 @@ class PersonalAssistantManager extends Component
         try {
             // Get OpenAI key using the trait's method
             $openaiKey = $this->getOpenAiKey();
-            
+
             if (!$openaiKey) {
                 throw new \Exception('OpenAI API key not configured. Please add your OpenAI API key in the settings.');
             }
@@ -597,15 +654,15 @@ class PersonalAssistantManager extends Component
             $config->maxTokens = $maxTokens;
 
             $chat = new \LLPhant\Chat\OpenAIChat($config);
-            
+
             // Generate response
             $response = $chat->generateChat($messages);
-            
+
             return $response;
-            
+
         } catch (\Exception $e) {
             Log::error('AI Response Error: ' . $e->getMessage());
-            
+
             // Return a fallback message instead of throwing
             return 'I apologize, but I encountered an error processing your request. Please ensure your OpenAI API key is configured correctly in the settings.';
         }
@@ -643,7 +700,7 @@ class PersonalAssistantManager extends Component
 
         $useCases = [];
         foreach ($this->use_case_tags as $tag) {
-            $useCases[] = match($tag) {
+            $useCases[] = match ($tag) {
                 'faq' => 'answer frequently asked questions',
                 'product' => 'provide product information and handle inquiries',
                 'onboarding' => 'guide users through onboarding and setup processes',
@@ -655,7 +712,7 @@ class PersonalAssistantManager extends Component
         }
 
         $instructions .= " specialized in " . implode(', ', $useCases) . ".";
-        
+
         $instructions .= "\n\nKey guidelines:";
         $instructions .= "\n- Use the uploaded documents and data as your primary knowledge source";
         $instructions .= "\n- Provide accurate, helpful, and concise responses";

@@ -28,7 +28,7 @@ use Throwable;
 trait WhatsApp
 {
     use Ai;
-    
+
     protected static string $facebookAPI = 'https://graph.facebook.com/';
 
     /**
@@ -43,7 +43,7 @@ trait WhatsApp
      */
     protected function loadWhatsAppSettings()
     {
-        if (! isset($this->whatsappSettings)) {
+        if (!isset($this->whatsappSettings)) {
             $this->whatsappSettings = get_batch_settings([
                 'whatsapp.api_version',
                 'whatsapp.wm_fb_app_id',
@@ -104,7 +104,7 @@ trait WhatsApp
 
     protected static function getBaseUrl(): string
     {
-        return self::$facebookAPI.self::getApiVersion().'/';
+        return self::$facebookAPI . self::getApiVersion() . '/';
     }
 
     protected function handleApiError(Throwable $e, string $operation, array $context = []): array
@@ -121,9 +121,9 @@ trait WhatsApp
         // Get user-friendly message based on debug mode
         $userMessage = config('app.debug')
             ? $e->getMessage()
-            : __($operation, ['default' => 'An error occurred during '.$operation]);
+            : __($operation, ['default' => 'An error occurred during ' . $operation]);
 
-        whatsapp_log("[WhatsApp {$operation} Error] ".$e->getMessage(), 'error', $errorContext, $e, $tenant_id);
+        whatsapp_log("[WhatsApp {$operation} Error] " . $e->getMessage(), 'error', $errorContext, $e, $tenant_id);
 
         return [
             'status' => false,
@@ -136,7 +136,7 @@ trait WhatsApp
      */
     protected function loadConnectionSettings()
     {
-        if (! isset($this->connectionSettings)) {
+        if (!isset($this->connectionSettings)) {
             $this->connectionSettings = tenant_settings_by_group('whatsapp', $this->wa_tenant_id);
         }
 
@@ -187,7 +187,7 @@ trait WhatsApp
     public function loadConfig($fromNumber = null)
     {
         return new WhatsAppCloudApi([
-            'from_phone_number_id' => (! empty($fromNumber)) ? $fromNumber : $this->getPhoneID(),
+            'from_phone_number_id' => (!empty($fromNumber)) ? $fromNumber : $this->getPhoneID(),
             'access_token' => $this->getToken(),
         ]);
     }
@@ -195,7 +195,7 @@ trait WhatsApp
     public function getPhoneNumbers(): array
     {
         try {
-            $response = Http::get(self::getBaseUrl()."{$this->getAccountID()}/phone_numbers", [
+            $response = Http::get(self::getBaseUrl() . "{$this->getAccountID()}/phone_numbers", [
                 'access_token' => $this->getToken(),
             ]);
 
@@ -223,7 +223,7 @@ trait WhatsApp
             $tenant_id = $this->getWaTenantId();
 
             $templates = [];
-            $url = self::getBaseUrl()."{$accountId}/message_templates?limit=100&access_token={$accessToken}";
+            $url = self::getBaseUrl() . "{$accountId}/message_templates?limit=100&access_token={$accessToken}";
 
             // Fetch all templates using pagination
             do {
@@ -240,7 +240,7 @@ trait WhatsApp
                 }
 
                 $data = $response->json('data');
-                if (! $data) {
+                if (!$data) {
                     return [
                         'status' => false,
                         'message' => 'Message templates not found.',
@@ -290,10 +290,10 @@ trait WhatsApp
                         }
 
                         if (isset($component['example'])) {
-                            if (! empty($component['example']['header_text'])) {
+                            if (!empty($component['example']['header_text'])) {
                                 $headerVariableValue = $component['example']['header_text'];
                             }
-                            if (! empty($component['example']['header_handle'])) {
+                            if (!empty($component['example']['header_handle'])) {
                                 $headerVariableValue = $component['example']['header_handle'];
                                 $headerFileUrl = $headerVariableValue[0];
                             }
@@ -355,7 +355,7 @@ trait WhatsApp
 
             // Delete templates that exist in DB but not in API
             $templatesForDeletion = array_diff($existingTemplateIds, $apiTemplateIds);
-            if (! empty($templatesForDeletion)) {
+            if (!empty($templatesForDeletion)) {
                 $deletedCount = WhatsappTemplate::where('tenant_id', $tenant_id)
                     ->whereIn('template_id', $templatesForDeletion)
                     ->delete();
@@ -386,7 +386,7 @@ trait WhatsApp
         $accessToken = $this->getToken();
         $accountId = $this->getAccountID();
         $tenant_id = $this->getWaTenantId();
-        $url = self::$facebookAPI."/$accountId/subscribed_apps?access_token=".$accessToken;
+        $url = self::$facebookAPI . "/$accountId/subscribed_apps?access_token=" . $accessToken;
 
         try {
             $response = Http::post($url);
@@ -405,7 +405,7 @@ trait WhatsApp
                 'data' => $data,
             ];
         } catch (\Throwable $th) {
-            whatsapp_log('Failed to subscribe webhook: '.$th->getMessage(), 'error', [
+            whatsapp_log('Failed to subscribe webhook: ' . $th->getMessage(), 'error', [
                 'url' => $url,
                 'account_id' => $accountId,
                 'tenant_id' => $tenant_id,
@@ -413,7 +413,7 @@ trait WhatsApp
 
             return [
                 'status' => false,
-                'message' => 'Something went wrong: '.$th->getMessage(),
+                'message' => 'Something went wrong: ' . $th->getMessage(),
             ];
         }
     }
@@ -423,7 +423,7 @@ trait WhatsApp
         $accessToken = $this->getToken();
         $tenantId = $this->getWaTenantId();
 
-        $url = self::$facebookAPI.self::getApiVersion()."/{$phoneNumberId}/register";
+        $url = self::$facebookAPI . self::getApiVersion() . "/{$phoneNumberId}/register";
 
         try {
             $response = Http::withToken($accessToken)
@@ -446,7 +446,7 @@ trait WhatsApp
                 'data' => $data,
             ];
         } catch (\Throwable $th) {
-            whatsapp_log('Failed to register phone number: '.$th->getMessage(), 'error', [
+            whatsapp_log('Failed to register phone number: ' . $th->getMessage(), 'error', [
                 'url' => $url,
                 'phone_number_id' => $phoneNumberId,
                 'tenant_id' => $tenantId,
@@ -454,7 +454,7 @@ trait WhatsApp
 
             return [
                 'status' => false,
-                'message' => 'Something went wrong: '.$th->getMessage(),
+                'message' => 'Something went wrong: ' . $th->getMessage(),
             ];
         }
     }
@@ -465,7 +465,7 @@ trait WhatsApp
         $phoneNumberId = $this->getPhoneID();
         $tenantId = $this->getWaTenantId();
 
-        $url = self::$facebookAPI.self::getApiVersion()."/{$phoneNumberId}?fields=messaging_limit_tier";
+        $url = self::$facebookAPI . self::getApiVersion() . "/{$phoneNumberId}?fields=messaging_limit_tier";
 
         try {
             $response = Http::withToken($accessToken)->get($url);
@@ -496,7 +496,7 @@ trait WhatsApp
                 'data' => $data,
             ];
         } catch (\Throwable $th) {
-            whatsapp_log('Failed to get phone number limit: '.$th->getMessage(), 'error', [
+            whatsapp_log('Failed to get phone number limit: ' . $th->getMessage(), 'error', [
                 'url' => $url,
                 'phone_number_id' => $phoneNumberId,
                 'tenant_id' => $tenantId,
@@ -504,7 +504,7 @@ trait WhatsApp
 
             return [
                 'status' => false,
-                'message' => 'Something went wrong: '.$th->getMessage(),
+                'message' => 'Something went wrong: ' . $th->getMessage(),
             ];
         }
     }
@@ -513,9 +513,9 @@ trait WhatsApp
     {
         try {
             $accessToken = $this->getToken();
-            $appAccessToken = $fb_app_id.'|'.$fb_app_secret;
+            $appAccessToken = $fb_app_id . '|' . $fb_app_secret;
 
-            $response = Http::get(self::getBaseUrl().'debug_token', [
+            $response = Http::get(self::getBaseUrl() . 'debug_token', [
                 'input_token' => $accessToken,
                 'access_token' => $appAccessToken,
             ]);
@@ -539,7 +539,7 @@ trait WhatsApp
     public function getProfile(): array
     {
         try {
-            $response = Http::get(self::getBaseUrl().$this->getPhoneID().'/whatsapp_business_profile', [
+            $response = Http::get(self::getBaseUrl() . $this->getPhoneID() . '/whatsapp_business_profile', [
                 'fields' => 'profile_picture_url',
                 'access_token' => $this->getToken(),
             ]);
@@ -566,7 +566,7 @@ trait WhatsApp
     public function getHealthStatus(): array
     {
         try {
-            $response = Http::get(self::getBaseUrl().$this->getAccountID(), [
+            $response = Http::get(self::getBaseUrl() . $this->getAccountID(), [
                 'fields' => 'health_status',
                 'access_token' => $this->getToken(),
             ]);
@@ -593,7 +593,7 @@ trait WhatsApp
         $endTime = strtotime(date('Y-m-d 23:59:59'));
         try {
 
-            $response = Http::get(self::getBaseUrl().$this->getAccountID(), [
+            $response = Http::get(self::getBaseUrl() . $this->getAccountID(), [
                 'fields' => "id,name,analytics.start({$startTime}).end({$endTime}).granularity(DAY)",
                 'access_token' => $this->getToken(),
             ]);
@@ -657,7 +657,7 @@ trait WhatsApp
             $filePath = storage_path("app/public/tenant/{$tenant_id}/images/qrcode.png");
 
             // Ensure the directory exists
-            if (! file_exists(dirname($filePath))) {
+            if (!file_exists(dirname($filePath))) {
                 mkdir(dirname($filePath), 0755, true);
             }
 
@@ -667,7 +667,7 @@ trait WhatsApp
             return true;
         } catch (Throwable $e) {
             $tenant_id = $this->getWaTenantId();
-            whatsapp_log('Error generating QR code: '.$e->getMessage(), 'error', [
+            whatsapp_log('Error generating QR code: ' . $e->getMessage(), 'error', [
                 'url' => $url,
                 'logo' => $logo,
                 'tenant_id' => $tenant_id,
@@ -684,7 +684,7 @@ trait WhatsApp
         $tenant_id = $this->getWaTenantId();
 
         try {
-            $url = self::$facebookAPI.$appId.'/subscriptions?access_token='.$appId.'|'.$appSecret;
+            $url = self::$facebookAPI . $appId . '/subscriptions?access_token=' . $appId . '|' . $appSecret;
 
             $response = Http::post($url, [
                 'object' => 'whatsapp_business_account',
@@ -707,13 +707,13 @@ trait WhatsApp
                 'data' => $data,
             ];
         } catch (\Throwable $th) {
-            whatsapp_log('Error connecting webhook: '.$th->getMessage(), 'error', [
+            whatsapp_log('Error connecting webhook: ' . $th->getMessage(), 'error', [
                 'tenant_id' => $tenant_id,
             ], $th, $tenant_id);
 
             return [
                 'status' => false,
-                'message' => 'Something went wrong: '.$th->getMessage(),
+                'message' => 'Something went wrong: ' . $th->getMessage(),
             ];
         }
     }
@@ -724,7 +724,7 @@ trait WhatsApp
         $appSecret = $this->getFBAppSecret();
         $tenant_id = $this->getWaTenantId();
 
-        $url = self::$facebookAPI.$appId.'/subscriptions?access_token='.$appId.'|'.$appSecret;
+        $url = self::$facebookAPI . $appId . '/subscriptions?access_token=' . $appId . '|' . $appSecret;
 
         try {
             $response = Http::delete($url, [], [
@@ -746,13 +746,13 @@ trait WhatsApp
                 'data' => $data,
             ];
         } catch (\Throwable $th) {
-            whatsapp_log('Error disconnecting webhook: '.$th->getMessage(), 'error', [
+            whatsapp_log('Error disconnecting webhook: ' . $th->getMessage(), 'error', [
                 'tenant_id' => $tenant_id,
             ], $th, $tenant_id);
 
             return [
                 'status' => false,
-                'message' => 'Something went wrong: '.$th->getMessage(),
+                'message' => 'Something went wrong: ' . $th->getMessage(),
             ];
         }
     }
@@ -774,7 +774,7 @@ trait WhatsApp
             $message = $errorData['error_user_msg'] ?? $errorData['message'] ?? $th->rawResponse() ?? $th->getMessage() ?? 'Failed to send test message.';
             $responseCode = $th->httpStatusCode();
 
-            whatsapp_log('Error sending test message: '.$message, 'error', [
+            whatsapp_log('Error sending test message: ' . $message, 'error', [
                 'number' => $number,
                 'response_code' => $responseCode,
                 'tenant_id' => $tenant_id,
@@ -796,7 +796,7 @@ trait WhatsApp
             $healthData = [
                 'api_status' => $this->getHealthStatus(),
                 'queue_size' => Queue::size($queueSettings['name']),
-                'daily_api_calls' => Cache::get('whatsapp_api_calls_'.now()->format('Y-m-d')),
+                'daily_api_calls' => Cache::get('whatsapp_api_calls_' . now()->format('Y-m-d')),
                 'token_status' => $this->debugToken($this->getFBAppID(), $this->getFBAppSecret()),
                 'profile_status' => $this->getProfile(),
                 'tenant_id' => $tenant_id,
@@ -850,7 +850,7 @@ trait WhatsApp
         $conversationTrackingNeeded = false;
         $identifierForTracking = null;
 
-        if (($type === 'campaign' || $type == 'Initiate Chat') && ! empty($template_data['rel_id'])) {
+        if (($type === 'campaign' || $type == 'Initiate Chat') && !empty($template_data['rel_id'])) {
             $featureService = app(\App\Services\FeatureService::class);
             $tenant_subdomain = tenant_subdomain_by_tenant_id($tenant_id);
 
@@ -867,7 +867,7 @@ trait WhatsApp
                     $conversationType
                 );
 
-                if (! $hasActiveSession) {
+                if (!$hasActiveSession) {
                     // This would be a new conversation
                     $conversationTrackingNeeded = true;
                     $identifierForTracking = $identifierForCheck;
@@ -928,11 +928,11 @@ trait WhatsApp
         $buttons_data = parseText($rel_type, 'footer', $template_data, 'array');
 
         $component_header = $component_body = $component_buttons = [];
-        $file_link = asset('storage/'.$template_data['filename']);
+        $file_link = asset('storage/' . $template_data['filename']);
 
         $template_buttons_data = json_decode($template_data['buttons_data']);
         $is_flow = false;
-        if (! empty($template_buttons_data)) {
+        if (!empty($template_buttons_data)) {
             $button_types = array_column($template_buttons_data, 'type');
             $is_flow = in_array('FLOW', $button_types);
         }
@@ -998,7 +998,7 @@ trait WhatsApp
             $responseData = json_encode($message);
             $rawData = json_encode([]);
 
-            whatsapp_log('Error sending template: '.$message, 'error', [
+            whatsapp_log('Error sending template: ' . $message, 'error', [
                 'to' => $to,
                 'template_name' => $template_data['template_name'],
                 'language' => $template_data['language'],
@@ -1048,16 +1048,16 @@ trait WhatsApp
 
         // try {
         $rows = [];
-        if (! empty($message_data['button1_id'])) {
+        if (!empty($message_data['button1_id'])) {
             $rows[] = new Button($message_data['button1_id'], $message_data['button1']);
         }
-        if (! empty($message_data['button2_id'])) {
+        if (!empty($message_data['button2_id'])) {
             $rows[] = new Button($message_data['button2_id'], $message_data['button2']);
         }
-        if (! empty($message_data['button3_id'])) {
+        if (!empty($message_data['button3_id'])) {
             $rows[] = new Button($message_data['button3_id'], $message_data['button3']);
         }
-        if (! empty($rows)) {
+        if (!empty($rows)) {
             $action = new ButtonAction($rows);
             $result = $whatsapp_cloud_api->sendButton(
                 $to,
@@ -1066,9 +1066,9 @@ trait WhatsApp
                 $message_data['bot_header'],
                 $message_data['bot_footer']
             );
-        } elseif (! empty($message_data['button_name']) && ! empty($message_data['button_url']) && filter_var($message_data['button_url'], \FILTER_VALIDATE_URL)) {
+        } elseif (!empty($message_data['button_name']) && !empty($message_data['button_url']) && filter_var($message_data['button_url'], \FILTER_VALIDATE_URL)) {
             $header = null;
-            if (! empty($message_data['bot_header'])) {
+            if (!empty($message_data['bot_header'])) {
                 $header = new TitleHeader($message_data['bot_header']);
             }
 
@@ -1081,13 +1081,13 @@ trait WhatsApp
                 $message_data['bot_footer'],
             );
         } else {
-            $message = $message_data['bot_header']."\n".$message_data['reply_text']."\n".$message_data['bot_footer'];
-            if (! empty($message_data['filename'])) {
-                $url = asset('storage/'.$message_data['filename']);
+            $message = $message_data['bot_header'] . "\n" . $message_data['reply_text'] . "\n" . $message_data['bot_footer'];
+            if (!empty($message_data['filename'])) {
+                $url = asset('storage/' . $message_data['filename']);
                 $link_id = new LinkID($url);
                 $fileExtensions = get_meta_allowed_extension();
                 $extension = strtolower(pathinfo($message_data['filename'], PATHINFO_EXTENSION));
-                $fileType = array_key_first(array_filter($fileExtensions, fn ($data) => in_array('.'.$extension, explode(', ', $data['extension']))));
+                $fileType = array_key_first(array_filter($fileExtensions, fn($data) => in_array('.' . $extension, explode(', ', $data['extension']))));
                 if ($fileType == 'image') {
                     $result = $whatsapp_cloud_api->sendImage($to, $link_id, $message);
                 } elseif ($fileType == 'video') {
@@ -1128,7 +1128,7 @@ trait WhatsApp
             'rel_type' => $message_data['rel_type'] ?? '',
             'rel_id' => $message_data['rel_id'] ?? '',
             'category_params' => json_encode(['message' => $message ?? '']),
-            'response_data' => ! empty($responseData) ? json_encode($responseData) : '',
+            'response_data' => !empty($responseData) ? json_encode($responseData) : '',
             'raw_data' => $rawData,
             'phone_number_id' => $this->getPhoneID(),
             'access_token' => $this->getToken(),
@@ -1145,11 +1145,11 @@ trait WhatsApp
             try {
                 $featureService = app(\App\Services\FeatureService::class);
                 $tenant_subdomain = tenant_subdomain_by_tenant_id($tenant_id);
-                
+
                 // Determine identifier for tracking
                 $identifierForTracking = null;
                 $relType = $message_data['rel_type'];
-                
+
                 if ($relType === 'guest') {
                     // For guests, we need chat_id - try to find it by phone number
                     try {
@@ -1159,7 +1159,7 @@ trait WhatsApp
                             ->where('tenant_id', $tenant_id)
                             ->orderBy('id', 'desc')
                             ->first();
-                        
+
                         if ($chat) {
                             $identifierForTracking = $chat->id;
                         } else {
@@ -1174,7 +1174,7 @@ trait WhatsApp
                     // For contacts/leads, use contact ID
                     $identifierForTracking = $message_data['rel_id'];
                 }
-                
+
                 if ($identifierForTracking) {
                     // Check if we should track (new conversation)
                     $shouldTrack = $this->shouldTrackNewConversation(
@@ -1183,7 +1183,7 @@ trait WhatsApp
                         $tenant_id,
                         $tenant_subdomain
                     );
-                    
+
                     if ($shouldTrack) {
                         $tracked = $featureService->trackNewConversation(
                             $identifierForTracking,
@@ -1191,7 +1191,7 @@ trait WhatsApp
                             $tenant_subdomain,
                             $relType
                         );
-                        
+
                         $this->logFlowDebug('Conversation Usage Tracked', [
                             'identifier' => $identifierForTracking,
                             'rel_type' => $relType,
@@ -1245,7 +1245,7 @@ trait WhatsApp
             $buttonsData = parseCsvText('footer', $templateData, $campaign);
 
             // Get file link if available
-            $fileLink = ($templateData['filename']) ? asset('storage/'.$templateData['filelink']) : '';
+            $fileLink = ($templateData['filename']) ? asset('storage/' . $templateData['filelink']) : '';
 
             // Build components for WhatsApp message
             $componentHeader = $this->buildHeaderComponent($templateData, $fileLink, $headerData);
@@ -1274,7 +1274,7 @@ trait WhatsApp
             ];
         } catch (ResponseException $e) {
 
-            whatsapp_log('WhatsApp API Error: '.$e->getMessage(), 'error', [
+            whatsapp_log('WhatsApp API Error: ' . $e->getMessage(), 'error', [
                 'phone' => $to,
                 'template' => $templateData['template_name'],
                 'response_code' => $e->httpStatusCode(),
@@ -1292,7 +1292,7 @@ trait WhatsApp
             ];
         } catch (\Exception $e) {
 
-            whatsapp_log('WhatsApp Campaign Error: '.$e->getMessage(), 'error', [
+            whatsapp_log('WhatsApp Campaign Error: ' . $e->getMessage(), 'error', [
                 'phone' => $to,
                 'template' => $templateData['template_name'] ?? 'unknown',
                 'response_code' => 500,
@@ -1330,7 +1330,7 @@ trait WhatsApp
             $result = $this->sendBulkCampaign($to, $templateData, $campaign, $fromNumber);
 
             // If successful or not a retryable error, break the loop
-            if ($result['status'] || ! $this->isRetryableError($result['responseCode'])) {
+            if ($result['status'] || !$this->isRetryableError($result['responseCode'])) {
                 break;
             }
 
@@ -1389,15 +1389,15 @@ trait WhatsApp
     {
         return match ($templateData['header_data_format']) {
             'IMAGE' => [['type' => 'image', 'image' => ['link' => $fileLink]]],
-            'DOCUMENT' => [['type' => 'document', 'document' => ['link' => $fileLink, 'filename' => 'file_'.uniqid().'.'.pathinfo($templateData['filename'], PATHINFO_EXTENSION)]]],
+            'DOCUMENT' => [['type' => 'document', 'document' => ['link' => $fileLink, 'filename' => 'file_' . uniqid() . '.' . pathinfo($templateData['filename'], PATHINFO_EXTENSION)]]],
             'VIDEO' => [['type' => 'video', 'video' => ['link' => $fileLink]]],
-            default => collect($headerData)->map(fn ($header) => ['type' => 'text', 'text' => $header])->toArray(),
+            default => collect($headerData)->map(fn($header) => ['type' => 'text', 'text' => $header])->toArray(),
         };
     }
 
     private function buildTextComponent($data)
     {
-        return collect($data)->map(fn ($text) => ['type' => 'text', 'text' => $text])->toArray();
+        return collect($data)->map(fn($text) => ['type' => 'text', 'text' => $text])->toArray();
     }
 
     /**
@@ -1409,7 +1409,7 @@ trait WhatsApp
     public function retrieveUrl($media_id)
     {
         $tenant_id = $this->getWaTenantId();
-        $url = self::$facebookAPI.$media_id;
+        $url = self::$facebookAPI . $media_id;
         $accessToken = $this->getToken();
 
         $response = Http::withToken($accessToken)->get($url);
@@ -1427,8 +1427,8 @@ trait WhatsApp
 
                     $extensionMap = self::$extensionMap;
                     $extension = $extensionMap[$contentType] ?? 'unknown';
-                    $filename = 'media_'.uniqid().'.'.$extension;
-                    $storagePath = 'whatsapp-attachments/'.$filename;
+                    $filename = 'media_' . uniqid() . '.' . $extension;
+                    $storagePath = 'whatsapp-attachments/' . $filename;
 
                     Storage::disk('public')->put($storagePath, $imageContent);
 
@@ -1514,7 +1514,7 @@ trait WhatsApp
                 return $this->processFlowVariableManagement($nodeData, $phoneNumberId, $contactData, $context);
 
             default:
-                return ['status' => false, 'message' => 'Unsupported node type: '.$nodeType];
+                return ['status' => false, 'message' => 'Unsupported node type: ' . $nodeType];
         }
     }
 
@@ -1525,7 +1525,7 @@ trait WhatsApp
     {
         // Use array functions to get reply_text from output if present
         $replyText = '';
-        if (! empty($nodeData['output']) && is_array($nodeData['output'])) {
+        if (!empty($nodeData['output']) && is_array($nodeData['output'])) {
             $replyText = collect($nodeData['output'])
                 ->pluck('reply_text')
                 ->filter()
@@ -1567,15 +1567,15 @@ trait WhatsApp
         $currentNodeId = $context['current_node'] ?? uniqid();
 
         if ($button1) {
-            $uniqueButtonId = $currentNodeId.'_btn_0';
+            $uniqueButtonId = $currentNodeId . '_btn_0';
             $buttons[] = new Button($uniqueButtonId, $button1);
         }
         if ($button2) {
-            $uniqueButtonId = $currentNodeId.'_btn_1';
+            $uniqueButtonId = $currentNodeId . '_btn_1';
             $buttons[] = new Button($uniqueButtonId, $button2);
         }
         if ($button3) {
-            $uniqueButtonId = $currentNodeId.'_btn_2';
+            $uniqueButtonId = $currentNodeId . '_btn_2';
             $buttons[] = new Button($uniqueButtonId, $button3);
         }
 
@@ -1646,7 +1646,7 @@ trait WhatsApp
 
             // Create header component if provided
             $headerComponent = null;
-            if (! empty($header)) {
+            if (!empty($header)) {
                 $headerComponent = new TitleHeader($header);
             }
 
@@ -1703,7 +1703,7 @@ trait WhatsApp
         // Get template details from database
         $template = \App\Models\Tenant\WhatsappTemplate::where('template_id', $templateId)->first();
 
-        if (! $template) {
+        if (!$template) {
             return ['status' => false, 'message' => 'Template not found'];
         }
 
@@ -1722,15 +1722,15 @@ trait WhatsApp
         ];
 
         // Add parameters
-        if (! empty($params['header'])) {
+        if (!empty($params['header'])) {
             $templateData['header_params'] = json_encode($this->replaceFlowVariablesInArray($params['header'], $contactData));
         }
 
-        if (! empty($params['body'])) {
+        if (!empty($params['body'])) {
             $templateData['body_params'] = json_encode($this->replaceFlowVariablesInArray($params['body'], $contactData));
         }
 
-        if (! empty($params['footer'])) {
+        if (!empty($params['footer'])) {
             $templateData['footer_params'] = json_encode($this->replaceFlowVariablesInArray($params['footer'], $contactData));
         }
 
@@ -1837,17 +1837,17 @@ trait WhatsApp
             $formattedSections = [];
             foreach ($sections as $sectionIndex => $section) {
                 $formattedSection = [
-                    'title' => $section['title'] ?? 'Section '.($sectionIndex + 1),
+                    'title' => $section['title'] ?? 'Section ' . ($sectionIndex + 1),
                     'rows' => [],
                 ];
 
                 foreach ($section['items'] as $itemIndex => $item) {
                     // Create unique list item ID for flow navigation
-                    $uniqueItemId = $currentNodeId.'_item_'.$sectionIndex.'_'.$itemIndex;
+                    $uniqueItemId = $currentNodeId . '_item_' . $sectionIndex . '_' . $itemIndex;
 
                     $formattedSection['rows'][] = [
                         'id' => $uniqueItemId, // Use unique ID instead of original item ID
-                        'title' => $item['title'] ?? 'Item '.($itemIndex + 1),
+                        'title' => $item['title'] ?? 'Item ' . ($itemIndex + 1),
                         'description' => $item['description'] ?? '',
                     ];
                 }
@@ -1873,7 +1873,7 @@ trait WhatsApp
             ];
 
             // Add header if provided
-            if (! empty($headerText)) {
+            if (!empty($headerText)) {
                 $interactivePayload['interactive']['header'] = [
                     'type' => 'text',
                     'text' => $headerText,
@@ -1881,7 +1881,7 @@ trait WhatsApp
             }
 
             // Add footer if provided
-            if (! empty($footerText)) {
+            if (!empty($footerText)) {
                 $interactivePayload['interactive']['footer'] = [
                     'text' => $footerText,
                 ];
@@ -1898,7 +1898,7 @@ trait WhatsApp
 
             // Send using raw API call
             $response = Http::withToken($this->getToken())
-                ->post(self::getBaseUrl().$this->getPhoneID().'/messages', $interactivePayload);
+                ->post(self::getBaseUrl() . $this->getPhoneID() . '/messages', $interactivePayload);
 
             $responseData = $response->json();
 
@@ -1962,7 +1962,7 @@ trait WhatsApp
         try {
             // Send using raw API call since the library might not support location directly
             $response = Http::withToken($this->getToken())
-                ->post(self::getBaseUrl().$this->getPhoneID().'/messages', [
+                ->post(self::getBaseUrl() . $this->getPhoneID() . '/messages', [
                     'messaging_product' => 'whatsapp',
                     'recipient_type' => 'individual',
                     'to' => $to,
@@ -2022,7 +2022,7 @@ trait WhatsApp
         foreach ($contacts as $contact) {
             $firstName = $this->replaceFlowVariables($contact['firstName'] ?? '', $contactData);
             $lastName = $this->replaceFlowVariables($contact['lastName'] ?? '', $contactData);
-            $formattedName = trim($firstName.' '.$lastName);
+            $formattedName = trim($firstName . ' ' . $lastName);
             $processed = [
                 'name' => [
                     'formatted_name' => $formattedName,
@@ -2038,7 +2038,7 @@ trait WhatsApp
             ];
 
             // Add email if provided
-            if (! empty($contact['email'])) {
+            if (!empty($contact['email'])) {
                 $processed['emails'] = [
                     [
                         'email' => $this->replaceFlowVariables($contact['email'] ?? '', $contactData),
@@ -2048,12 +2048,12 @@ trait WhatsApp
             }
 
             // Add company info if provided
-            if (! empty($contact['company'])) {
+            if (!empty($contact['company'])) {
                 $processed['org'] = [
                     'company' => $this->replaceFlowVariables($contact['company'] ?? '', $contactData),
                 ];
 
-                if (! empty($contact['title'])) {
+                if (!empty($contact['title'])) {
                     $processed['org']['title'] = $this->replaceFlowVariables($contact['title'] ?? '', $contactData);
                 }
             }
@@ -2065,7 +2065,7 @@ trait WhatsApp
         try {
             // Send using raw API call
             $response = Http::withToken($this->getToken())
-                ->post(self::getBaseUrl().$this->getPhoneID().'/messages', [
+                ->post(self::getBaseUrl() . $this->getPhoneID() . '/messages', [
                     'messaging_product' => 'whatsapp',
                     'recipient_type' => 'individual',
                     'to' => $to,
@@ -2110,7 +2110,7 @@ trait WhatsApp
     {
         $assistantMode = $nodeData['assistantMode'] ?? 'custom';
         $hasSelectedAssistant = isset($nodeData['selectedAssistantId']) && !empty($nodeData['selectedAssistantId']);
-        
+
         $this->logFlowDebug('AI Assistant Node - sendFlowAiMessage Called', [
             'assistant_mode' => $assistantMode,
             'has_selected_assistant' => $hasSelectedAssistant,
@@ -2122,7 +2122,7 @@ trait WhatsApp
             'has_output' => isset($nodeData['output']),
             'output_count' => isset($nodeData['output']) ? count($nodeData['output']) : 0,
         ]);
-        
+
         whatsapp_log('AI Assistant Node Processing', 'info', [
             'mode' => $assistantMode,
             'has_selected_assistant' => $hasSelectedAssistant,
@@ -2140,7 +2140,7 @@ trait WhatsApp
                 'to' => $to,
                 'tenant_id' => $this->wa_tenant_id,
             ]);
-            
+
             return $this->sendFlowPersonalAssistantMessage($to, $nodeData, $phoneNumberId, $contactData, $context);
         }
 
@@ -2152,7 +2152,7 @@ trait WhatsApp
             'has_temperature' => isset($nodeData['temperature']),
             'has_maxTokens' => isset($nodeData['maxTokens']),
         ]);
-        
+
         $prompt = $this->replaceFlowVariables($nodeData['prompt'] ?? '', $contactData);
         $aiModel = $nodeData['aiModel'] ?? 'gpt-3.5-turbo';
         $contextType = $nodeData['contextType'] ?? 'message';
@@ -2172,7 +2172,7 @@ trait WhatsApp
             $this->logFlowDebug('AI Assistant - Custom Mode has empty prompt, falling back to Personal Assistant', [
                 'to' => $to,
             ]);
-            
+
             // Try personal assistant mode as fallback
             return $this->sendFlowPersonalAssistantMessage($to, $nodeData, $phoneNumberId, $contactData, $context);
         }
@@ -2182,33 +2182,33 @@ trait WhatsApp
             'prompt' => substr($prompt, 0, 200) . '...',
             'model' => $aiModel,
         ]);
-        
+
         $aiResponse = $this->generateFlowAiResponse($prompt, $aiModel, $contextType, $context, $temperature, $maxTokens);
 
-        if (! $aiResponse) {
+        if (!$aiResponse) {
             $this->logFlowDebug('AI Assistant - Custom Mode Response Generation FAILED, falling back to Personal Assistant', [
                 'mode' => 'custom',
                 'to' => $to,
             ]);
-            
+
             // Try personal assistant mode as fallback
             $fallbackResult = $this->sendFlowPersonalAssistantMessage($to, $nodeData, $phoneNumberId, $contactData, $context);
-            
+
             // If fallback also fails, send error message to user
             if (!$fallbackResult || !($fallbackResult['status'] ?? false)) {
                 $this->logFlowDebug('AI Assistant - Both Custom and Personal Assistant modes failed, sending error message', [
                     'to' => $to,
                 ]);
-                
+
                 $messageData = [
                     'rel_type' => $contactData->type ?? 'guest',
                     'rel_id' => $contactData->id ?? '',
                     'reply_text' => 'Sorry, I encountered an error processing your request. Please try again later.',
                 ];
-                
+
                 return $this->sendMessage($to, $messageData, $phoneNumberId);
             }
-            
+
             return $fallbackResult;
         }
 
@@ -2231,7 +2231,7 @@ trait WhatsApp
         ]);
 
         $result = $this->sendMessage($to, $messageData, $phoneNumberId);
-        
+
         $this->logFlowDebug('AI Assistant - Message Send Result', [
             'status' => $result['status'] ?? 'unknown',
             'response_code' => $result['responseCode'] ?? 'unknown',
@@ -2247,46 +2247,49 @@ trait WhatsApp
     {
         $logFile = storage_path('logs/aipersonaldebug.log');
         $timestamp = now()->format('Y-m-d H:i:s');
-        
+
         $this->logToAiFile($logFile, "================================================================================");
         $this->logToAiFile($logFile, "[$timestamp] FLOW AI ASSISTANT NODE - PROCESSING START");
         $this->logToAiFile($logFile, "================================================================================");
         $this->logToAiFile($logFile, "TO: " . $to);
         $this->logToAiFile($logFile, "NODE DATA: " . json_encode($nodeData));
-        
+
         try {
             // ✅ CORRECT: Get selected assistant ID from node data
             $selectedAssistantId = $nodeData['selectedAssistantId'] ?? null;
-            
+
             $this->logToAiFile($logFile, "SELECTED ASSISTANT ID: " . ($selectedAssistantId ?? 'NULL'));
-            
+
             if (!$selectedAssistantId) {
                 $this->logToAiFile($logFile, "ERROR: No assistant selected in node");
-                
+
                 $messageData = [
                     'rel_type' => $contactData->type ?? 'guest',
                     'rel_id' => $contactData->id ?? '',
                     'reply_text' => 'AI Assistant not configured. Please select an assistant in the flow settings.',
                 ];
-                
+
                 return $this->sendMessage($to, $messageData, $phoneNumberId);
             }
-            
-            // ✅ CORRECT: Get the SPECIFIC assistant by ID
-            $assistant = \App\Models\PersonalAssistant::find($selectedAssistantId);
-            
+
+            // ✅ SECURITY: Get the SPECIFIC assistant by ID with tenant verification
+            // This prevents cross-tenant access even if someone tries to use another tenant's assistant ID
+            $assistant = \App\Models\PersonalAssistant::findForTenant($selectedAssistantId, $tenantId);
+
             if (!$assistant) {
-                $this->logToAiFile($logFile, "ERROR: Assistant not found (ID: $selectedAssistantId)");
-                
+                $this->logToAiFile($logFile, "ERROR: Assistant not found or doesn't belong to tenant");
+                $this->logToAiFile($logFile, "  - Assistant ID: $selectedAssistantId");
+                $this->logToAiFile($logFile, "  - Tenant ID: $tenantId");
+
                 $messageData = [
                     'rel_type' => $contactData->type ?? 'guest',
                     'rel_id' => $contactData->id ?? '',
                     'reply_text' => 'AI Assistant not found. Please reconfigure the flow.',
                 ];
-                
+
                 return $this->sendMessage($to, $messageData, $phoneNumberId);
             }
-            
+
             $this->logToAiFile($logFile, "ASSISTANT FOUND:");
             $this->logToAiFile($logFile, "  - ID: " . $assistant->id);
             $this->logToAiFile($logFile, "  - Name: " . $assistant->name);
@@ -2295,31 +2298,31 @@ trait WhatsApp
 
             if (!$assistant->is_active) {
                 $this->logToAiFile($logFile, "ERROR: Assistant is disabled");
-                
+
                 $messageData = [
                     'rel_type' => $contactData->type ?? 'guest',
                     'rel_id' => $contactData->id ?? '',
                     'reply_text' => 'AI Assistant is currently disabled. Please try again later.',
                 ];
-                
+
                 return $this->sendMessage($to, $messageData, $phoneNumberId);
             }
 
             // Get the trigger message from context
             $userMessage = $context['trigger_message'] ?? 'Hello';
-            
+
             $this->logToAiFile($logFile, "USER MESSAGE FROM CONTEXT: " . $userMessage);
-            
+
             // Get contact information for thread persistence
             $contactId = $contactData->id ?? null;
             $contactPhone = $to;
             $tenantId = $this->wa_tenant_id ?? tenant_id();
-            
+
             $this->logToAiFile($logFile, "CONTACT INFO:");
             $this->logToAiFile($logFile, "  - Contact ID: " . ($contactId ?? 'N/A'));
             $this->logToAiFile($logFile, "  - Contact Phone: " . $contactPhone);
             $this->logToAiFile($logFile, "  - Tenant ID: " . ($tenantId ?? 'N/A'));
-            
+
             // Build conversation history if available
             $conversationHistory = [];
             if (!empty($context['conversation_history'])) {
@@ -2343,49 +2346,49 @@ trait WhatsApp
 
             $this->logToAiFile($logFile, "CALLING personalAssistantResponse()...");
             $this->logToAiFile($logFile, "  - Passing selected assistant (ID: " . $assistant->id . ")");
-            
+
             $this->logFlowDebug('AI Assistant - Calling AI Service', [
                 'method' => 'personalAssistantResponse',
                 'assistant_id' => $assistant->id,
                 'user_message' => $userMessage,
                 'message_length' => strlen($userMessage),
             ]);
-            
+
             // Use the Ai trait method to get response with the selected assistant
             // Pass contact info for thread persistence
             $aiResult = null;
             $aiResponseText = '';
-            
+
             try {
                 $this->logFlowDebug('AI Assistant - Starting AI Call', [
                     'timestamp' => now()->format('H:i:s.u'),
                     'contact_id' => $contactId,
                     'contact_phone' => $contactPhone,
                 ]);
-                
+
                 $aiResult = $this->personalAssistantResponse(
-                    $userMessage, 
-                    $conversationHistory, 
+                    $userMessage,
+                    $conversationHistory,
                     $assistant,
                     $contactId,
                     $contactPhone,
                     $tenantId
                 );
-                
+
                 $this->logFlowDebug('AI Assistant - AI Call Completed', [
                     'timestamp' => now()->format('H:i:s.u'),
                     'has_result' => !is_null($aiResult),
                     'result_keys' => is_array($aiResult) ? array_keys($aiResult) : [],
                 ]);
-                
+
                 $this->logToAiFile($logFile, "personalAssistantResponse() RETURNED:");
                 $this->logToAiFile($logFile, "  - Status: " . ($aiResult['status'] ?? 'UNKNOWN'));
                 $this->logToAiFile($logFile, "  - Has Message: " . (isset($aiResult['message']) ? 'Yes' : 'No'));
                 $this->logToAiFile($logFile, "  - Message Length: " . strlen($aiResult['message'] ?? ''));
-                
+
                 // Log AI response to flow debug
                 $aiResponseText = $aiResult['message'] ?? '';
-                
+
                 $this->logFlowDebug('AI Assistant - AI Response Received', [
                     'status' => ($aiResult['status'] ?? false) ? 'SUCCESS' : 'FAILED',
                     'response_length' => strlen($aiResponseText),
@@ -2395,7 +2398,7 @@ trait WhatsApp
                     'model_used' => $aiResult['model_used'] ?? $assistant->model ?? 'N/A',
                     'assistant_name' => $aiResult['assistant_name'] ?? $assistant->name ?? 'N/A',
                 ]);
-                
+
             } catch (\Throwable $e) {
                 $this->logFlowDebug('AI Assistant - Exception Getting Response', [
                     'error' => $e->getMessage(),
@@ -2403,30 +2406,30 @@ trait WhatsApp
                     'line' => $e->getLine(),
                     'trace' => substr($e->getTraceAsString(), 0, 500),
                 ]);
-                
+
                 $this->logToAiFile($logFile, "EXCEPTION in personalAssistantResponse:");
                 $this->logToAiFile($logFile, "  - Error: " . $e->getMessage());
                 $this->logToAiFile($logFile, "  - File: " . $e->getFile());
                 $this->logToAiFile($logFile, "  - Line: " . $e->getLine());
-                
+
                 throw $e;
             }
-            
+
             if (!$aiResult || !($aiResult['status'] ?? false)) {
                 $errorMessage = $aiResult['message'] ?? 'Unknown error';
                 $this->logToAiFile($logFile, "ERROR: " . $errorMessage);
-                
+
                 $this->logFlowDebug('AI Assistant - Response Generation Failed', [
                     'error' => $errorMessage,
                     'user_message' => $userMessage,
                 ]);
-                
+
                 $messageData = [
                     'rel_type' => $contactData->type ?? 'guest',
                     'rel_id' => $contactData->id ?? '',
                     'reply_text' => 'Sorry, I encountered an error. Please try again.',
                 ];
-                
+
                 return $this->sendMessage($to, $messageData, $phoneNumberId);
             }
 
@@ -2460,14 +2463,14 @@ trait WhatsApp
                     'phone_number_id' => $phoneNumberId,
                     'message_data' => $messageData,
                 ]);
-                
+
                 $sendResult = $this->sendMessage($to, $messageData, $phoneNumberId);
-                
+
                 $this->logToAiFile($logFile, "MESSAGE SEND RESULT:");
                 $this->logToAiFile($logFile, "  - Status: " . ($sendResult['status'] ?? 'unknown'));
                 $this->logToAiFile($logFile, "  - Response Code: " . ($sendResult['responseCode'] ?? 'unknown'));
                 $this->logToAiFile($logFile, "  - Full Result: " . json_encode($sendResult));
-                
+
                 // Log final result to flow debug
                 $this->logFlowDebug('AI Assistant - Message Send Result', [
                     'status' => $sendResult['status'] ?? 'UNKNOWN',
@@ -2476,7 +2479,7 @@ trait WhatsApp
                     'to' => $to,
                     'full_result' => $sendResult,
                 ]);
-                
+
             } catch (\Throwable $sendException) {
                 $this->logFlowDebug('AI Assistant - Exception Sending Message', [
                     'error' => $sendException->getMessage(),
@@ -2484,12 +2487,12 @@ trait WhatsApp
                     'line' => $sendException->getLine(),
                     'trace' => substr($sendException->getTraceAsString(), 0, 500),
                 ]);
-                
+
                 $this->logToAiFile($logFile, "EXCEPTION SENDING MESSAGE:");
                 $this->logToAiFile($logFile, "  - Error: " . $sendException->getMessage());
                 $this->logToAiFile($logFile, "  - File: " . $sendException->getFile());
                 $this->logToAiFile($logFile, "  - Line: " . $sendException->getLine());
-                
+
                 throw $sendException;
             }
 
@@ -2503,7 +2506,7 @@ trait WhatsApp
             $this->logToAiFile($logFile, "  - Error: " . $e->getMessage());
             $this->logToAiFile($logFile, "[$timestamp] FLOW AI ASSISTANT NODE - END (EXCEPTION)");
             $this->logToAiFile($logFile, "================================================================================\n");
-            
+
             $messageData = [
                 'rel_type' => $contactData->type ?? 'guest',
                 'rel_id' => $contactData->id ?? '',
@@ -2525,7 +2528,7 @@ trait WhatsApp
             if (!file_exists($directory)) {
                 mkdir($directory, 0755, true);
             }
-            
+
             file_put_contents($filePath, $message . "\n", FILE_APPEND);
         } catch (\Exception $e) {
             // Silently fail if logging fails
@@ -2550,7 +2553,7 @@ trait WhatsApp
             // Get AI configuration
             $openAiKey = get_tenant_setting_from_db('whats-mark', 'openai_secret_key');
             $configuredModel = get_tenant_setting_from_db('whats-mark', 'chat_model') ?: 'gpt-3.5-turbo';
-            
+
             if (empty($openAiKey)) {
                 whatsapp_log('OpenAI API key not configured', 'error', [
                     'tenant_id' => $this->wa_tenant_id,
@@ -2563,7 +2566,7 @@ trait WhatsApp
 
             // Prepare the conversation context
             $messages = [];
-            
+
             // Add system prompt
             if (!empty($prompt)) {
                 $messages[] = [
@@ -2581,7 +2584,7 @@ trait WhatsApp
                         $messages[] = $msg;
                     }
                     break;
-                    
+
                 case 'flow':
                     // Add flow context information
                     $flowContext = $this->buildFlowContext($context);
@@ -2592,7 +2595,7 @@ trait WhatsApp
                         ];
                     }
                     break;
-                    
+
                 case 'message':
                 default:
                     // Add the trigger message if available
@@ -2621,7 +2624,7 @@ trait WhatsApp
             $config->maxTokens = $maxTokens;
 
             $chat = new \LLPhant\Chat\OpenAIChat($config);
-            
+
             // Generate response
             $response = $chat->generateChat($messages);
 
@@ -2657,7 +2660,7 @@ trait WhatsApp
         // This is a placeholder - implement based on your message storage system
         // You might want to query your messages table here
         $messages = [];
-        
+
         // Example implementation:
         // $recentMessages = Message::where('chat_id', $context['chat_id'])
         //     ->orderBy('created_at', 'desc')
@@ -2681,15 +2684,15 @@ trait WhatsApp
     protected function buildFlowContext($context)
     {
         $contextInfo = [];
-        
+
         if (!empty($context['flow_id'])) {
             $contextInfo[] = "Flow ID: " . $context['flow_id'];
         }
-        
+
         if (!empty($context['current_node'])) {
             $contextInfo[] = "Current Node: " . $context['current_node'];
         }
-        
+
         if (!empty($context['user_variables'])) {
             $contextInfo[] = "User Variables: " . json_encode($context['user_variables']);
         }
@@ -2726,7 +2729,7 @@ trait WhatsApp
 
         try {
             // First, delete from Meta WhatsApp Business API
-            $url = self::getBaseUrl()."{$accountId}/message_templates";
+            $url = self::getBaseUrl() . "{$accountId}/message_templates";
 
             $response = Http::withToken($accessToken)
                 ->delete($url, [
@@ -2809,7 +2812,7 @@ trait WhatsApp
 
                 return [
                     'status' => false,
-                    'message' => 'Template deleted from Meta but database deletion failed: '.$dbException->getMessage(),
+                    'message' => 'Template deleted from Meta but database deletion failed: ' . $dbException->getMessage(),
                     'meta_deleted' => true,
                     'db_deleted' => false,
                     'meta_response' => $metaResponse,
@@ -2825,7 +2828,7 @@ trait WhatsApp
 
             return [
                 'status' => false,
-                'message' => 'Template deletion failed: '.$e->getMessage(),
+                'message' => 'Template deletion failed: ' . $e->getMessage(),
                 'meta_deleted' => false,
                 'db_deleted' => false,
                 'error_details' => $e->getMessage(),
@@ -2894,7 +2897,7 @@ trait WhatsApp
                 'successful' => $successCount,
                 'failed' => $failureCount,
                 'results' => $results,
-                'rollback_available' => ! empty($rollbackNeeded),
+                'rollback_available' => !empty($rollbackNeeded),
             ];
         } catch (\Exception $e) {
             whatsapp_log('Bulk template deletion failed', 'error', [
@@ -2904,7 +2907,7 @@ trait WhatsApp
 
             return [
                 'status' => false,
-                'message' => 'Bulk deletion failed: '.$e->getMessage(),
+                'message' => 'Bulk deletion failed: ' . $e->getMessage(),
                 'total_processed' => count($results),
                 'successful' => $successCount,
                 'failed' => $failureCount,
@@ -2955,14 +2958,14 @@ trait WhatsApp
         // Step 1: Download the media file
         $fileResponse = Http::timeout(30)->get($mediaUrl);
         if ($fileResponse->failed()) {
-            throw new \Exception('Failed to download media file from: '.$mediaUrl);
+            throw new \Exception('Failed to download media file from: ' . $mediaUrl);
         }
 
         $fileContents = $fileResponse->body();
         $mimeType = $fileResponse->header('Content-Type');
 
         // If Content-Type header is not available, try to detect from URL extension
-        if (! $mimeType) {
+        if (!$mimeType) {
             $extension = strtolower(pathinfo(parse_url($mediaUrl, PHP_URL_PATH), PATHINFO_EXTENSION));
             $mimeType = match ($extension) {
                 'jpg', 'jpeg' => 'image/jpeg',
@@ -2983,14 +2986,14 @@ trait WhatsApp
 
         // Step 2: Create upload session
         $uploadSessionResponse = Http::withToken($accessToken)
-            ->post(self::getBaseUrl()."{$facebookAppId}/uploads", [
+            ->post(self::getBaseUrl() . "{$facebookAppId}/uploads", [
                 'file_length' => $fileLength,
                 'file_type' => $mimeType,
             ]);
 
         if ($uploadSessionResponse->failed()) {
             $errorData = $uploadSessionResponse->json();
-            throw new \Exception('Failed to create upload session: '.($errorData['error']['message'] ?? $uploadSessionResponse->body()));
+            throw new \Exception('Failed to create upload session: ' . ($errorData['error']['message'] ?? $uploadSessionResponse->body()));
         }
 
         $uploadSessionData = $uploadSessionResponse->json();
@@ -3001,7 +3004,7 @@ trait WhatsApp
         ], null, $tenant_id);
 
         // Step 3: Upload the file using cURL (like WhatsJet)
-        $uploadUrl = self::getBaseUrl().$uploadSessionId;
+        $uploadUrl = self::getBaseUrl() . $uploadSessionId;
 
         $ch = curl_init();
 
@@ -3015,7 +3018,7 @@ trait WhatsApp
         ];
 
         $headers = [
-            'Authorization: OAuth '.$accessToken,
+            'Authorization: OAuth ' . $accessToken,
             'file_offset: 0',
         ];
 
@@ -3036,29 +3039,29 @@ trait WhatsApp
         // Clean up temp file
         unlink($tempFile);
 
-        if ($result === false || ! empty($curlError)) {
-            throw new \Exception('cURL error: '.$curlError);
+        if ($result === false || !empty($curlError)) {
+            throw new \Exception('cURL error: ' . $curlError);
         }
 
         if ($httpCode !== 200) {
-            throw new \Exception('Upload failed with HTTP code: '.$httpCode.', Response: '.$result);
+            throw new \Exception('Upload failed with HTTP code: ' . $httpCode . ', Response: ' . $result);
         }
 
         $resultData = json_decode($result, true);
 
-        if (! $resultData) {
-            throw new \Exception('Invalid JSON response: '.$result);
+        if (!$resultData) {
+            throw new \Exception('Invalid JSON response: ' . $result);
         }
 
         if (isset($resultData['error'])) {
-            throw new \Exception('Upload API error: '.($resultData['error']['message'] ?? json_encode($resultData['error'])));
+            throw new \Exception('Upload API error: ' . ($resultData['error']['message'] ?? json_encode($resultData['error'])));
         }
 
         // WhatsJet returns the 'h' field for resumable uploads
         $uploadHandle = $resultData['h'] ?? null;
 
-        if (! $uploadHandle) {
-            throw new \Exception('No upload handle returned. Response: '.$result);
+        if (!$uploadHandle) {
+            throw new \Exception('No upload handle returned. Response: ' . $result);
         }
 
         whatsapp_log('Resumable media uploaded successfully for template', 'info', [
@@ -3080,14 +3083,14 @@ trait WhatsApp
         $accountId = $this->getAccountID();
 
         try {
-            $url = self::getBaseUrl()."{$accountId}/message_templates";
+            $url = self::getBaseUrl() . "{$accountId}/message_templates";
 
             // Build template components from the incoming data structure
             $components = [];
             $data = $templateData['data'] ?? [];
 
             // Add header component if provided
-            if (! empty($data['header'])) {
+            if (!empty($data['header'])) {
                 $headerComponent = [
                     'type' => 'HEADER',
                 ];
@@ -3107,7 +3110,7 @@ trait WhatsApp
 
                     $mediaUrl = $data['header']['media_url'] ?? null;
 
-                    if (! empty($mediaUrl)) {
+                    if (!empty($mediaUrl)) {
                         // Upload media and get handle
                         $uploadedHandle = $this->uploadResumableMediaForTemplate($mediaUrl);
 
@@ -3125,7 +3128,7 @@ trait WhatsApp
                             // If upload fails, we cannot create IMAGE/VIDEO/DOCUMENT header without example
                             return [
                                 'status' => false,
-                                'message' => 'Failed to upload media for template header. Media upload is required for '.$data['header']['type'].' headers.',
+                                'message' => 'Failed to upload media for template header. Media upload is required for ' . $data['header']['type'] . ' headers.',
                                 'error_details' => 'Media upload failed',
                             ];
                         }
@@ -3136,7 +3139,7 @@ trait WhatsApp
             }
 
             // Add body component (required)
-            if (! empty($data['body'])) {
+            if (!empty($data['body'])) {
                 $bodyComponent = [
                     'type' => 'BODY',
                     'text' => $data['body'],
@@ -3158,7 +3161,7 @@ trait WhatsApp
             }
 
             // Add footer component if provided
-            if (! empty($data['footer'])) {
+            if (!empty($data['footer'])) {
                 $components[] = [
                     'type' => 'FOOTER',
                     'text' => $data['footer'],
@@ -3166,7 +3169,7 @@ trait WhatsApp
             }
 
             // Add buttons component if provided
-            if (! empty($data['buttons']) && is_array($data['buttons'])) {
+            if (!empty($data['buttons']) && is_array($data['buttons'])) {
                 $buttonsComponent = [
                     'type' => 'BUTTONS',
                     'buttons' => [],
@@ -3262,7 +3265,7 @@ trait WhatsApp
 
             return [
                 'status' => false,
-                'message' => 'Template creation failed: '.$e->getMessage(),
+                'message' => 'Template creation failed: ' . $e->getMessage(),
                 'error_details' => $e->getMessage(),
             ];
         }
@@ -3291,7 +3294,7 @@ trait WhatsApp
                     ->where('tenant_id', $tenant_id)
                     ->first();
 
-                if (! $localTemplate || ! $localTemplate->template_id) {
+                if (!$localTemplate || !$localTemplate->template_id) {
                     return [
                         'status' => false,
                         'message' => 'Template not found or missing Meta template ID',
@@ -3310,21 +3313,21 @@ trait WhatsApp
             if ($localTemplate && in_array($localTemplate->status, ['REJECTED', 'DISABLED'])) {
                 return [
                     'status' => false,
-                    'message' => ucfirst(strtolower($localTemplate->status)).' templates cannot be edited. Please create a new template.',
+                    'message' => ucfirst(strtolower($localTemplate->status)) . ' templates cannot be edited. Please create a new template.',
                     'error_code' => 'TEMPLATE_NOT_EDITABLE',
                 ];
             }
 
             // Use the correct Meta API endpoint for template updates
             // The endpoint should be the template ID directly, not account/template_id
-            $url = self::getBaseUrl().$metaTemplateId;
+            $url = self::getBaseUrl() . $metaTemplateId;
 
             // Build template components from the incoming data structure
             $components = [];
             $data = $templateData['data'] ?? [];
 
             // Add header component if provided
-            if (! empty($data['header'])) {
+            if (!empty($data['header'])) {
                 $headerComponent = [
                     'type' => 'HEADER',
                 ];
@@ -3344,7 +3347,7 @@ trait WhatsApp
 
                     $mediaUrl = $data['header']['media_url'] ?? null;
 
-                    if (! empty($mediaUrl)) {
+                    if (!empty($mediaUrl)) {
                         // Upload media and get handle for updates too
                         $uploadedHandle = $this->uploadResumableMediaForTemplate($mediaUrl);
 
@@ -3362,7 +3365,7 @@ trait WhatsApp
                             // If upload fails, we cannot update with IMAGE/VIDEO/DOCUMENT header
                             return [
                                 'status' => false,
-                                'message' => 'Failed to upload media for template header update. Media upload is required for '.$data['header']['type'].' headers.',
+                                'message' => 'Failed to upload media for template header update. Media upload is required for ' . $data['header']['type'] . ' headers.',
                                 'error_details' => 'Media upload failed',
                             ];
                         }
@@ -3373,7 +3376,7 @@ trait WhatsApp
             }
 
             // Add body component (required)
-            if (! empty($data['body'])) {
+            if (!empty($data['body'])) {
                 $bodyComponent = [
                     'type' => 'BODY',
                     'text' => $data['body'],
@@ -3395,7 +3398,7 @@ trait WhatsApp
             }
 
             // Add footer component if provided
-            if (! empty($data['footer'])) {
+            if (!empty($data['footer'])) {
                 $components[] = [
                     'type' => 'FOOTER',
                     'text' => $data['footer'],
@@ -3403,7 +3406,7 @@ trait WhatsApp
             }
 
             // Add buttons component if provided
-            if (! empty($data['buttons']) && is_array($data['buttons'])) {
+            if (!empty($data['buttons']) && is_array($data['buttons'])) {
                 $buttonsComponent = [
                     'type' => 'BUTTONS',
                     'buttons' => [],
@@ -3523,7 +3526,7 @@ trait WhatsApp
 
             return [
                 'status' => false,
-                'message' => 'Template update failed: '.$e->getMessage(),
+                'message' => 'Template update failed: ' . $e->getMessage(),
                 'error_details' => $e->getMessage(),
             ];
         }
@@ -3542,7 +3545,7 @@ trait WhatsApp
         $accountId = $this->getAccountID();
 
         try {
-            $url = self::getBaseUrl()."{$accountId}/message_templates/{$templateId}";
+            $url = self::getBaseUrl() . "{$accountId}/message_templates/{$templateId}";
 
             $response = Http::withToken($accessToken)->get($url);
 
@@ -3580,7 +3583,7 @@ trait WhatsApp
 
             return [
                 'status' => false,
-                'message' => 'Failed to get template: '.$e->getMessage(),
+                'message' => 'Failed to get template: ' . $e->getMessage(),
             ];
         }
     }
@@ -3650,7 +3653,7 @@ trait WhatsApp
             // Build headers array
             $requestHeaders = [];
             foreach ($headers as $header) {
-                if (! empty($header['name']) && ! empty($header['value'])) {
+                if (!empty($header['name']) && !empty($header['value'])) {
                     $headerValue = $this->replaceFlowVariables($header['value'], $contactData);
                     $requestHeaders[$header['name']] = $headerValue;
                 }
@@ -3665,7 +3668,7 @@ trait WhatsApp
                 }
             }
 
-            if (! $contentTypeSet && in_array($method, ['POST', 'PUT', 'PATCH'])) {
+            if (!$contentTypeSet && in_array($method, ['POST', 'PUT', 'PATCH'])) {
                 switch (strtolower($format)) {
                     case 'json':
                         $requestHeaders['Content-Type'] = 'application/json';
@@ -3684,7 +3687,7 @@ trait WhatsApp
 
             // Build request body based on format
             $requestBody = null;
-            if (in_array($method, ['POST', 'PUT', 'PATCH']) && ! empty($body)) {
+            if (in_array($method, ['POST', 'PUT', 'PATCH']) && !empty($body)) {
                 $bodyData = [];
                 foreach ($body as $field) {
                     if (isset($field['key']) && $field['key'] !== '' && isset($field['value'])) {
@@ -3693,7 +3696,7 @@ trait WhatsApp
                     }
                 }
 
-                if (! empty($bodyData)) {
+                if (!empty($bodyData)) {
                     switch (strtolower($format)) {
                         case 'json':
                             $requestBody = json_encode($bodyData);
@@ -3874,13 +3877,13 @@ trait WhatsApp
         try {
             $conditions = $nodeData['conditions'] ?? [];
             $defaultAction = $nodeData['defaultAction'] ?? 'continue';
-            
+
             if (empty($conditions)) {
                 return ['status' => false, 'message' => 'No conditions defined'];
             }
 
             $result = $this->evaluateConditions($conditions, $contactData, $context);
-            
+
             whatsapp_log('Condition evaluation result', 'info', [
                 'node_id' => $context['current_node'] ?? 'unknown',
                 'result' => $result,
@@ -3914,18 +3917,18 @@ trait WhatsApp
         }
 
         $results = [];
-        
+
         foreach ($conditions as $condition) {
             $results[] = $this->evaluateSingleCondition($condition, $contactData, $context);
         }
 
         // Process logic operators (AND/OR)
         $finalResult = $results[0];
-        
+
         for ($i = 0; $i < count($conditions) - 1; $i++) {
             $logic = $conditions[$i]['logic'] ?? 'AND';
             $nextResult = $results[$i + 1];
-            
+
             if ($logic === 'OR') {
                 $finalResult = $finalResult || $nextResult;
             } else { // AND
@@ -4017,11 +4020,11 @@ trait WhatsApp
         $now = now();
         $hour = $now->hour;
         $dayOfWeek = $now->dayOfWeek; // 0 = Sunday, 6 = Saturday
-        
+
         // Default business hours: Monday-Friday, 9 AM - 6 PM
         $isWeekday = $dayOfWeek >= 1 && $dayOfWeek <= 5;
         $isBusinessHour = $hour >= 9 && $hour < 18;
-        
+
         return $isWeekday && $isBusinessHour;
     }
 
@@ -4033,7 +4036,7 @@ trait WhatsApp
         try {
             $delayType = $nodeData['delayType'] ?? 'fixed';
             $delaySeconds = $this->calculateDelaySeconds($nodeData);
-            
+
             whatsapp_log('Processing delay node', 'info', [
                 'node_id' => $context['current_node'] ?? 'unknown',
                 'delay_type' => $delayType,
@@ -4066,30 +4069,30 @@ trait WhatsApp
     protected function calculateDelaySeconds($nodeData)
     {
         $delayType = $nodeData['delayType'] ?? 'fixed';
-        
+
         switch ($delayType) {
             case 'fixed':
                 $duration = $nodeData['duration'] ?? 3;
                 $unit = $nodeData['unit'] ?? 'seconds';
                 return $this->convertToSeconds($duration, $unit);
-                
+
             case 'random':
                 $minDuration = $nodeData['minDuration'] ?? 1;
                 $maxDuration = $nodeData['maxDuration'] ?? 5;
                 $unit = $nodeData['unit'] ?? 'seconds';
                 $randomDuration = rand($minDuration, $maxDuration);
                 return $this->convertToSeconds($randomDuration, $unit);
-                
+
             case 'typing':
                 $messageLength = $nodeData['messageLength'] ?? 100;
                 $typingSpeed = $nodeData['typingSpeed'] ?? 'normal';
                 $wpm = $typingSpeed === 'slow' ? 40 : ($typingSpeed === 'fast' ? 80 : 60);
                 return max(1, ceil(($messageLength / 5) / ($wpm / 60)));
-                
+
             case 'scheduled':
                 // For scheduled delays, return a large number to indicate special handling needed
                 return 86400; // 24 hours as placeholder
-                
+
             default:
                 return 3;
         }
@@ -4122,7 +4125,7 @@ trait WhatsApp
             $message = $nodeData['message'] ?? 'Please provide the following information:';
             $fields = $nodeData['fields'] ?? [];
             $collectionMode = $nodeData['collectionMode'] ?? 'sequential';
-            
+
             if (empty($fields)) {
                 return ['status' => false, 'message' => 'No input fields defined'];
             }
@@ -4134,7 +4137,7 @@ trait WhatsApp
             if ($collectionMode === 'sequential') {
                 $firstField = $fields[0];
                 $fieldMessage = $this->buildFieldMessage($firstField, $processedMessage);
-                
+
                 // Send the collection message
                 $messageData = [
                     'rel_type' => $contactData->type ?? 'guest',
@@ -4146,7 +4149,7 @@ trait WhatsApp
                 ];
 
                 $result = $this->sendMessage($to, $messageData, $phoneNumberId);
-                
+
                 // Log the input collection start
                 $this->logFlowActivity($to, $result, [
                     'rel_type' => $contactData->type ?? 'guest',
@@ -4163,11 +4166,11 @@ trait WhatsApp
                     'collection_mode' => $collectionMode,
                 ]);
             }
-            
+
             // For form mode, create a comprehensive message
             else {
                 $formMessage = $this->buildFormMessage($fields, $processedMessage);
-                
+
                 $messageData = [
                     'rel_type' => $contactData->type ?? 'guest',
                     'rel_id' => $contactData->id ?? '',
@@ -4197,11 +4200,11 @@ trait WhatsApp
     {
         $message = $introMessage . "\n\n";
         $message .= $field['label'] ?? 'Please enter value:';
-        
+
         if ($field['required'] ?? false) {
             $message .= ' *';
         }
-        
+
         if ($field['type'] === 'choice' && !empty($field['options'])) {
             $options = explode("\n", $field['options']);
             $message .= "\n\nOptions:";
@@ -4219,22 +4222,22 @@ trait WhatsApp
     protected function buildFormMessage($fields, $introMessage)
     {
         $message = $introMessage . "\n\n";
-        
+
         foreach ($fields as $index => $field) {
             $message .= ($index + 1) . ". " . ($field['label'] ?? 'Field ' . ($index + 1));
-            
+
             if ($field['required'] ?? false) {
                 $message .= ' *';
             }
-            
+
             if ($field['type'] === 'choice' && !empty($field['options'])) {
                 $options = explode("\n", $field['options']);
                 $message .= " (Choose: " . implode(', ', array_map('trim', $options)) . ")";
             }
-            
+
             $message .= "\n";
         }
-        
+
         $message .= "\n* Required fields\n";
         $message .= "Please provide all information in your response.";
 
@@ -4259,7 +4262,7 @@ trait WhatsApp
             $replies = $nodeData['replies'] ?? [];
 
             // Filter out empty replies
-            $validReplies = array_filter($replies, function($reply) {
+            $validReplies = array_filter($replies, function ($reply) {
                 return !empty($reply['text']);
             });
 
@@ -4271,8 +4274,9 @@ trait WhatsApp
             // Build WhatsApp quick reply buttons (interactive message)
             $buttons = [];
             foreach (array_values($validReplies) as $index => $reply) {
-                if ($index >= 13) break; // WhatsApp limit
-                
+                if ($index >= 13)
+                    break; // WhatsApp limit
+
                 $buttons[] = [
                     'type' => 'reply',
                     'reply' => [
@@ -4329,7 +4333,7 @@ trait WhatsApp
 
             // Load WhatsApp Cloud API config
             $whatsapp_cloud_api = $this->loadConfig($phoneNumberId);
-            
+
             $this->logFlowDebug('Quick Replies: Sending via API', [
                 'api_loaded' => !empty($whatsapp_cloud_api),
                 'to' => $to
@@ -4341,16 +4345,16 @@ trait WhatsApp
                 '/' . $phoneNumberId . '/messages',
                 $payload
             );
-            
+
             $result = [
                 'status' => $response->httpStatusCode() >= 200 && $response->httpStatusCode() < 300,
                 'data' => json_decode($response->body()),
                 'responseCode' => $response->httpStatusCode(),
-                'message' => $response->httpStatusCode() >= 200 && $response->httpStatusCode() < 300 
-                    ? 'Quick replies sent successfully' 
+                'message' => $response->httpStatusCode() >= 200 && $response->httpStatusCode() < 300
+                    ? 'Quick replies sent successfully'
                     : 'Failed to send quick replies'
             ];
-            
+
             $this->logFlowDebug('Quick Replies: API Response', [
                 'result' => $result,
                 'success' => $result['status'],
@@ -4391,8 +4395,9 @@ trait WhatsApp
             switch ($action) {
                 case 'add':
                     foreach ($tags as $tag) {
-                        if (empty($tag['name'])) continue;
-                        
+                        if (empty($tag['name']))
+                            continue;
+
                         $this->addContactTag($contactData->id, $tag['name'], $createIfNotExist);
                         $appliedTags[] = $tag['name'];
                     }
@@ -4400,8 +4405,9 @@ trait WhatsApp
 
                 case 'remove':
                     foreach ($tags as $tag) {
-                        if (empty($tag['name'])) continue;
-                        
+                        if (empty($tag['name']))
+                            continue;
+
                         $this->removeContactTag($contactData->id, $tag['name']);
                         $appliedTags[] = $tag['name'];
                     }
@@ -4410,11 +4416,12 @@ trait WhatsApp
                 case 'replace':
                     // Remove all existing tags first
                     $this->clearContactTags($contactData->id);
-                    
+
                     // Then add new tags
                     foreach ($tags as $tag) {
-                        if (empty($tag['name'])) continue;
-                        
+                        if (empty($tag['name']))
+                            continue;
+
                         $this->addContactTag($contactData->id, $tag['name'], $createIfNotExist);
                         $appliedTags[] = $tag['name'];
                     }
@@ -4422,7 +4429,7 @@ trait WhatsApp
 
                 case 'conditional':
                     $conditions = $nodeData['conditions'] ?? [];
-                    
+
                     foreach ($conditions as $condition) {
                         $variable = $this->getVariableValue($condition['variable'] ?? '', $contactData, $context);
                         $operator = $condition['operator'] ?? 'equals';
@@ -4593,7 +4600,7 @@ trait WhatsApp
 
     private function calculateVariableExpiration($value, $unit)
     {
-        $seconds = match($unit) {
+        $seconds = match ($unit) {
             'minutes' => $value * 60,
             'hours' => $value * 3600,
             'days' => $value * 86400,
@@ -4620,10 +4627,10 @@ trait WhatsApp
     {
         try {
             $whatsappApi = $this->getWhatsAppApi();
-            
+
             // WhatsApp typing indicator API call
             $response = $whatsappApi->sendTyping($to, true, $phoneNumberId);
-            
+
             return [
                 'status' => true,
                 'message' => 'Typing indicator sent',
@@ -4635,7 +4642,7 @@ trait WhatsApp
                 'phone_number_id' => $phoneNumberId,
                 'error' => $e->getMessage()
             ]);
-            
+
             return [
                 'status' => false,
                 'message' => 'Failed to send typing indicator: ' . $e->getMessage()
