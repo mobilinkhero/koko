@@ -477,21 +477,69 @@
     
     // Function to trigger embedded signup (global scope)
     function triggerEmbeddedSignup() {
-        if (embeddedSignupButton) {
-            embeddedSignupButton.click();
-            return true;
+        const container = document.getElementById('fb-embedded-signup');
+        if (!container) {
+            console.error('Container not found');
+            return false;
         }
         
-        // Try to find the button
-        const container = document.getElementById('fb-embedded-signup');
-        if (container) {
-            embeddedSignupButton = container.querySelector('button, [role="button"], .fb-embedded-signup button, iframe');
-            if (embeddedSignupButton) {
+        // Try multiple ways to find and trigger the button
+        const selectors = [
+            'button',
+            '[role="button"]',
+            '.fb-embedded-signup button',
+            'iframe',
+            'div[role="button"]',
+            'a[role="button"]'
+        ];
+        
+        // First try cached button
+        if (embeddedSignupButton) {
+            try {
                 embeddedSignupButton.click();
                 return true;
+            } catch (e) {
+                console.log('Cached button click failed, trying to find again');
+                embeddedSignupButton = null;
             }
         }
         
+        // Try to find button in container
+        for (let selector of selectors) {
+            const button = container.querySelector(selector);
+            if (button) {
+                embeddedSignupButton = button;
+                try {
+                    button.click();
+                    console.log('Found and clicked button with selector:', selector);
+                    return true;
+                } catch (e) {
+                    console.log('Click failed for selector:', selector, e);
+                }
+            }
+        }
+        
+        // Try to find in iframe content
+        const iframe = container.querySelector('iframe');
+        if (iframe && iframe.contentDocument) {
+            try {
+                const iframeButton = iframe.contentDocument.querySelector('button, [role="button"]');
+                if (iframeButton) {
+                    iframeButton.click();
+                    return true;
+                }
+            } catch (e) {
+                console.log('Cannot access iframe content (cross-origin)');
+            }
+        }
+        
+        // Last resort: try to trigger via Facebook API
+        if (typeof FB !== 'undefined' && FB.ui) {
+            console.log('Trying Facebook UI method');
+            // This might not work for embedded signup, but worth trying
+        }
+        
+        console.error('Could not find embedded signup button');
         return false;
     }
 
@@ -535,15 +583,47 @@
             e.preventDefault();
             e.stopPropagation();
             
-            if (!triggerEmbeddedSignup()) {
-                // If button not found, try again after a short delay
-                setTimeout(function() {
-                    if (!triggerEmbeddedSignup()) {
-                        console.error('Facebook embedded signup widget not found. Please refresh the page.');
-                        alert('Facebook login is not ready. Please refresh the page and try again.');
+            // Try to trigger embedded signup
+            if (triggerEmbeddedSignup()) {
+                return;
+            }
+            
+            // If button not found, try again after a short delay
+            setTimeout(function() {
+                if (triggerEmbeddedSignup()) {
+                    return;
+                }
+                
+                // Fallback: Open Facebook OAuth in popup window
+                console.log('Using fallback: Opening Facebook OAuth in popup');
+                const redirectUri = encodeURIComponent('{{ url(tenant_route("tenant.connect", [], false)) }}');
+                const appId = '{{ $admin_fb_app_id }}';
+                const configId = '{{ $admin_fb_config_id }}';
+                
+                const oauthUrl = `https://www.facebook.com/v18.0/dialog/oauth?` +
+                    `client_id=${appId}` +
+                    `&redirect_uri=${redirectUri}` +
+                    `&response_type=code` +
+                    `&scope=whatsapp_business_management,business_management` +
+                    `&config_id=${configId}` +
+                    `&state={{ csrf_token() }}`;
+                
+                // Open in popup window
+                const popup = window.open(
+                    oauthUrl,
+                    'FacebookLogin',
+                    'width=600,height=700,scrollbars=yes,resizable=yes'
+                );
+                
+                // Listen for popup to close (user completed or cancelled)
+                const checkClosed = setInterval(function() {
+                    if (popup.closed) {
+                        clearInterval(checkClosed);
+                        // Reload page to check for code parameter
+                        window.location.reload();
                     }
                 }, 500);
-            }
+            }, 500);
         }
     });
     
@@ -557,17 +637,18 @@
         
         const container = document.getElementById('fb-embedded-signup');
         if (!container) {
+            console.error('fb-embedded-signup container not found');
             return;
         }
         
         // Only render if container is empty
         if (container.innerHTML.trim() !== '') {
-            // Widget already rendered, just find the button
-            setTimeout(function() {
-                embeddedSignupButton = container.querySelector('button, [role="button"], .fb-embedded-signup button, iframe');
-            }, 500);
+            // Widget already rendered, try to find the button
+            findEmbeddedButton();
             return;
         }
+        
+        console.log('Rendering Facebook embedded signup widget with config_id: {{ $admin_fb_config_id }}');
         
         // Use Facebook's Embedded Signup widget - it will open in popup automatically
         // The widget uses the config_id from admin panel
@@ -581,24 +662,77 @@
         
         try {
             FB.XFBML.parse(container);
+            console.log('FB.XFBML.parse completed');
         } catch (e) {
             console.error('Error parsing FB XFBML:', e);
         }
         
-        // After widget renders, find and store the button reference
+        // Use MutationObserver to watch for widget rendering
+        const observer = new MutationObserver(function(mutations) {
+            findEmbeddedButton();
+        });
+        
+        observer.observe(container, {
+            childList: true,
+            subtree: true,
+            attributes: true
+        });
+        
+        // Also try to find button after delays
+        setTimeout(findEmbeddedButton, 1000);
+        setTimeout(findEmbeddedButton, 2000);
+        setTimeout(findEmbeddedButton, 3000);
+        
+        // Stop observing after 5 seconds
         setTimeout(function() {
-            embeddedSignupButton = container.querySelector('button, [role="button"], .fb-embedded-signup button, iframe');
-            
-            if (embeddedSignupButton) {
+            observer.disconnect();
+        }, 5000);
+    }
+    
+    // Function to find the embedded button
+    function findEmbeddedButton() {
+        const container = document.getElementById('fb-embedded-signup');
+        if (!container) {
+            return;
+        }
+        
+        const selectors = [
+            'button',
+            '[role="button"]',
+            '.fb-embedded-signup button',
+            'iframe',
+            'div[role="button"]',
+            'a[role="button"]',
+            'span[role="button"]'
+        ];
+        
+        for (let selector of selectors) {
+            const button = container.querySelector(selector);
+            if (button) {
+                embeddedSignupButton = button;
                 // Hide Facebook's default button (we'll use our custom styled button)
-                if (embeddedSignupButton.style) {
-                    embeddedSignupButton.style.display = 'none';
+                if (button.style) {
+                    button.style.display = 'none';
+                    button.style.visibility = 'hidden';
+                    button.style.opacity = '0';
+                    button.style.position = 'absolute';
+                    button.style.width = '1px';
+                    button.style.height = '1px';
                 }
-                console.log('Facebook embedded signup widget ready');
-            } else {
-                console.warn('Facebook embedded signup button not found after render');
+                console.log('Facebook embedded signup button found with selector:', selector);
+                return true;
             }
-        }, 1500);
+        }
+        
+        // Check iframe
+        const iframe = container.querySelector('iframe');
+        if (iframe) {
+            embeddedSignupButton = iframe;
+            console.log('Facebook embedded signup iframe found');
+            return true;
+        }
+        
+        return false;
     }
     
     // Wait for DOM and FB SDK to be ready
