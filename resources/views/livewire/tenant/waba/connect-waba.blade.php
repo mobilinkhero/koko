@@ -463,6 +463,19 @@
 {{-- Facebook Embedded Signup SDK --}}
 <div id="fb-root"></div>
 <script>
+    // ============================================
+    // FACEBOOK EMBEDDED SIGNUP - DETAILED LOGGING
+    // ============================================
+    console.log('========================================');
+    console.log('FACEBOOK EMBEDDED SIGNUP INITIALIZATION');
+    console.log('========================================');
+    console.log('Admin Facebook App ID:', '{{ $admin_fb_app_id }}');
+    console.log('Admin Facebook Config ID:', '{{ $admin_fb_config_id }}');
+    console.log('Admin Facebook App Secret:', '{{ $admin_fb_app_secret ? "***CONFIGURED***" : "NOT SET" }}');
+    console.log('Redirect URI:', '{{ url(tenant_route("tenant.connect", [], false)) }}');
+    console.log('Embedded Signup Configured:', {{ $embedded_signup_configured ? 'true' : 'false' }});
+    console.log('========================================');
+    
     // Facebook SDK
     (function(d, s, id) {
         var js, fjs = d.getElementsByTagName(s)[0];
@@ -470,6 +483,7 @@
         js = d.createElement(s); js.id = id;
         js.src = "https://connect.facebook.net/en_US/sdk.js";
         fjs.parentNode.insertBefore(js, fjs);
+        console.log('Facebook SDK script tag created and added to DOM');
     }(document, 'script', 'facebook-jssdk'));
 
     // Store reference to embedded button for reuse (global scope)
@@ -574,6 +588,15 @@
     }
 
     window.fbAsyncInit = function() {
+        console.log('========================================');
+        console.log('FACEBOOK SDK INITIALIZATION');
+        console.log('========================================');
+        console.log('Initializing Facebook SDK with:');
+        console.log('  - App ID:', '{{ $admin_fb_app_id }}');
+        console.log('  - Version: v18.0');
+        console.log('  - Cookie: true');
+        console.log('  - XFBML: true');
+        
         FB.init({
             appId: '{{ $admin_fb_app_id }}',
             cookie: true,
@@ -581,29 +604,56 @@
             version: 'v18.0'
         });
         
+        console.log('Facebook SDK initialized successfully');
+        console.log('FB object:', typeof FB !== 'undefined' ? 'Available' : 'Not Available');
+        console.log('FB.XFBML:', typeof FB !== 'undefined' && FB.XFBML ? 'Available' : 'Not Available');
+        console.log('========================================');
+        
         // Trigger widget rendering after FB is initialized
         setTimeout(function() {
+            console.log('Starting widget rendering after 500ms delay...');
             renderEmbeddedSignup();
         }, 500);
 
         // Listen for embedded signup completion - This is the main event handler
         FB.Event.subscribe('embedded_signup', function(response) {
-            console.log('Embedded signup response:', response);
+            console.log('========================================');
+            console.log('EMBEDDED SIGNUP EVENT RECEIVED');
+            console.log('========================================');
+            console.log('Full response object:', response);
+            console.log('Response type:', typeof response);
+            console.log('Has code:', !!(response && response.code));
+            console.log('Has authResponse:', !!(response && response.authResponse));
+            console.log('Has accessToken:', !!(response && response.authResponse && response.authResponse.accessToken));
             
             if (response && response.code) {
+                console.log('Authorization code received:', response.code);
+                console.log('Calling Livewire handleEmbeddedSignup() with code...');
                 // Send authorization code to Livewire - this is the correct flow
                 @this.handleEmbeddedSignup(response.code);
             } else if (response && response.authResponse && response.authResponse.accessToken) {
+                console.log('Access token received directly (fallback)');
+                console.log('Access token (first 20 chars):', response.authResponse.accessToken.substring(0, 20) + '...');
                 // Fallback: if we get access token directly (shouldn't happen with embedded signup)
                 const accessToken = response.authResponse.accessToken;
+                console.log('Fetching business accounts from Facebook API...');
+                console.log('API Endpoint: https://graph.facebook.com/v18.0/me/businesses');
                 // Try to get business account ID
                 FB.api('/me/businesses', { access_token: accessToken }, function(businessResponse) {
+                    console.log('Business accounts API response:', businessResponse);
                     if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
                         const businessAccountId = businessResponse.data[0].id;
+                        console.log('Business Account ID found:', businessAccountId);
+                        console.log('Calling Livewire handleEmbeddedSignupDirect()...');
                         @this.call('handleEmbeddedSignupDirect', accessToken, businessAccountId);
+                    } else {
+                        console.error('No business accounts found in response');
                     }
                 });
+            } else {
+                console.error('Unexpected response format:', response);
             }
+            console.log('========================================');
         });
     };
 
@@ -613,51 +663,83 @@
             e.preventDefault();
             e.stopPropagation();
             
+            console.log('========================================');
+            console.log('FACEBOOK LOGIN BUTTON CLICKED');
+            console.log('========================================');
+            console.log('Button clicked at:', new Date().toISOString());
+            console.log('Attempting to trigger embedded signup...');
+            
             // Try to trigger embedded signup
             if (triggerEmbeddedSignup()) {
+                console.log('Embedded signup triggered successfully on first attempt');
                 return;
             }
             
+            console.log('First attempt failed, retrying after 500ms...');
             // If button not found, try again after a short delay
             setTimeout(function() {
                 if (triggerEmbeddedSignup()) {
+                    console.log('Embedded signup triggered successfully on retry');
                     return;
                 }
                 
                         // Last attempt: Try using Facebook's UI method or direct API call
-                console.log('Trying alternative method to trigger embedded signup...');
+                console.log('========================================');
+                console.log('FALLBACK: TRYING ALTERNATIVE METHODS');
+                console.log('========================================');
                 
                 // Method 1: Try to use FB.ui if available
                 if (typeof FB !== 'undefined' && FB.ui) {
-                    console.log('Attempting FB.ui method...');
+                    console.log('FB.ui is available, attempting to use it...');
                     // This might not work for embedded signup, but worth trying
+                } else {
+                    console.log('FB.ui is NOT available');
                 }
                 
                 // Method 2: Inspect what was actually rendered
                 const container = document.getElementById('fb-embedded-signup');
                 if (container) {
-                    console.log('Container content:', container.innerHTML);
+                    console.log('Container exists, inspecting contents...');
+                    console.log('Container innerHTML length:', container.innerHTML.length);
+                    console.log('Container innerHTML (first 2000 chars):', container.innerHTML.substring(0, 2000));
                     console.log('Container children count:', container.children.length);
+                    console.log('Container computed style display:', window.getComputedStyle(container).display);
+                    console.log('Container computed style visibility:', window.getComputedStyle(container).visibility);
                     
                     // Try to find ANY interactive element
                     const allElements = container.querySelectorAll('*');
                     console.log('Total elements in container:', allElements.length);
                     
+                    console.log('First 20 elements:');
                     for (let i = 0; i < Math.min(allElements.length, 20); i++) {
                         const el = allElements[i];
-                        console.log(`Element ${i}:`, el.tagName, el.className, el.id, el.getAttribute('role'));
+                        console.log(`  Element ${i}:`, {
+                            tagName: el.tagName,
+                            className: el.className,
+                            id: el.id,
+                            role: el.getAttribute('role'),
+                            onclick: el.onclick ? 'Has onclick' : 'No onclick',
+                            innerHTML: el.innerHTML.substring(0, 100)
+                        });
                     }
                     
                     // Method 3: Try clicking the container itself or first child
                     const firstChild = container.firstElementChild;
                     if (firstChild) {
-                        console.log('Trying to click first child:', firstChild);
+                        console.log('Trying to click first child:', {
+                            tagName: firstChild.tagName,
+                            className: firstChild.className,
+                            id: firstChild.id
+                        });
                         try {
                             firstChild.click();
+                            console.log('First child click executed');
                             return;
                         } catch (e) {
-                            console.log('First child click failed:', e);
+                            console.error('First child click failed:', e);
                         }
+                    } else {
+                        console.log('No first child found in container');
                     }
                     
                     // Method 4: Try dispatching click event on container
@@ -671,12 +753,23 @@
                         console.log('Dispatched click event on container');
                         return;
                     } catch (e) {
-                        console.log('Container click dispatch failed:', e);
+                        console.error('Container click dispatch failed:', e);
                     }
+                } else {
+                    console.error('Container not found!');
                 }
                 
                 // Final fallback: Show error
-                console.error('Embedded signup widget failed to render. Please check your Facebook Config ID in admin settings.');
+                console.error('========================================');
+                console.error('EMBEDDED SIGNUP FAILED');
+                console.error('========================================');
+                console.error('All methods to trigger embedded signup have failed.');
+                console.error('Please check:');
+                console.error('  1. Facebook App ID is configured:', '{{ $admin_fb_app_id ? "YES" : "NO" }}');
+                console.error('  2. Facebook Config ID is configured:', '{{ $admin_fb_config_id ? "YES" : "NO" }}');
+                console.error('  3. Config ID value:', '{{ $admin_fb_config_id }}');
+                console.error('  4. Admin panel URL: https://soft.chatvoo.com/admin/whatsapp-webhook');
+                console.error('========================================');
                 alert('Facebook embedded signup is not available. Please ensure the Facebook Config ID is correctly configured in the admin panel at /admin/whatsapp-webhook');
             }, 500);
         }
@@ -684,7 +777,16 @@
     
     // Render embedded signup widget - This will create a button that opens in a popup
     function renderEmbeddedSignup() {
+        console.log('========================================');
+        console.log('RENDERING EMBEDDED SIGNUP WIDGET');
+        console.log('========================================');
+        console.log('FB SDK Status:', {
+            'FB defined': typeof FB !== 'undefined',
+            'FB.XFBML available': typeof FB !== 'undefined' && FB.XFBML ? true : false,
+        });
+        
         if (typeof FB === 'undefined' || !FB.XFBML) {
+            console.log('FB SDK not ready, retrying in 500ms...');
             // Retry if FB not loaded yet
             setTimeout(renderEmbeddedSignup, 500);
             return;
@@ -692,10 +794,11 @@
         
         const container = document.getElementById('fb-embedded-signup');
         if (!container) {
-            console.error('fb-embedded-signup container not found');
+            console.error('ERROR: fb-embedded-signup container not found in DOM');
             return;
         }
         
+        console.log('Container found, setting up visibility...');
         // Make container visible (but off-screen) so Facebook can render the widget
         // Facebook's widget needs to be visible to render properly
         container.style.display = 'block';
@@ -709,7 +812,12 @@
         
         // Only render if container is empty
         if (container.innerHTML.trim() === '') {
-            console.log('Rendering Facebook embedded signup widget with config_id: {{ $admin_fb_config_id }}');
+            console.log('Container is empty, rendering widget...');
+            console.log('Widget Configuration:');
+            console.log('  - Config ID:', '{{ $admin_fb_config_id }}');
+            console.log('  - Redirect URI:', '{{ url(tenant_route("tenant.connect", [], false)) }}');
+            console.log('  - Width: 100%');
+            console.log('  - Onboarding Type: popup');
             
             // Use Facebook's Embedded Signup widget - it will open in popup automatically
             // The widget uses the config_id from admin panel
@@ -722,11 +830,16 @@
                 </div>
             `;
             
+            console.log('Widget HTML inserted, parsing with FB.XFBML...');
             try {
                 FB.XFBML.parse(container);
-                console.log('FB.XFBML.parse completed');
+                console.log('✅ FB.XFBML.parse completed successfully');
             } catch (e) {
-                console.error('Error parsing FB XFBML:', e);
+                console.error('❌ ERROR parsing FB XFBML:', e);
+                console.error('Error details:', {
+                    message: e.message,
+                    stack: e.stack
+                });
             }
         } else {
             // Widget already rendered, try to find the button
