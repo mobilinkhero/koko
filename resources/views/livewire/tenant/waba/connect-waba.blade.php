@@ -479,61 +479,39 @@
             version: 'v18.0'
         });
 
-        // Handle Facebook Login button click - Open in popup
+        // Handle Facebook Login button click - Trigger embedded signup widget
         document.getElementById('fb-login-button')?.addEventListener('click', function(e) {
             e.preventDefault();
             
-            // Use FB.login() which opens in a popup by default
-            FB.login(function(response) {
-                if (response.authResponse) {
-                    // User granted permissions
-                    const accessToken = response.authResponse.accessToken;
-                    
-                    // Get business account ID
-                    FB.api('/me/businesses', { 
-                        access_token: accessToken,
-                        fields: 'id,name'
-                    }, function(businessResponse) {
-                        if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
-                            const businessAccountId = businessResponse.data[0].id;
-                            // Call Livewire method to save
-                            @this.call('handleEmbeddedSignupDirect', accessToken, businessAccountId);
-                        } else {
-                            // Try alternative method to get business account
-                            FB.api('/me', { 
-                                access_token: accessToken,
-                                fields: 'id'
-                            }, function(userResponse) {
-                                @this.call('handleEmbeddedSignupDirect', accessToken, userResponse.id);
-                            });
-                        }
-                    });
-                } else {
-                    console.log('User cancelled login or did not fully authorize.');
-                }
-            }, {
-                scope: 'whatsapp_business_management,business_management',
-                config_id: '{{ $admin_fb_config_id }}',
-                return_scopes: true,
-                auth_type: 'rerequest'
-            });
+            // Find the embedded signup button rendered by Facebook widget
+            const embeddedButton = document.querySelector('#fb-embedded-signup button, #fb-embedded-signup [role="button"], #fb-embedded-signup .fb-embedded-signup button');
+            if (embeddedButton) {
+                embeddedButton.click();
+            } else {
+                // If widget not rendered yet, wait and retry
+                setTimeout(function() {
+                    const btn = document.querySelector('#fb-embedded-signup button, #fb-embedded-signup [role="button"]');
+                    if (btn) {
+                        btn.click();
+                    }
+                }, 500);
+            }
         });
 
-        // Listen for embedded signup completion (fallback)
+        // Listen for embedded signup completion - This is the main event handler
         FB.Event.subscribe('embedded_signup', function(response) {
             console.log('Embedded signup response:', response);
             
             if (response && response.code) {
-                // Send authorization code to Livewire
+                // Send authorization code to Livewire - this is the correct flow
                 @this.handleEmbeddedSignup(response.code);
             } else if (response && response.authResponse && response.authResponse.accessToken) {
-                // Fallback: if we get access token directly
+                // Fallback: if we get access token directly (shouldn't happen with embedded signup)
                 const accessToken = response.authResponse.accessToken;
                 // Try to get business account ID
                 FB.api('/me/businesses', { access_token: accessToken }, function(businessResponse) {
                     if (businessResponse && businessResponse.data && businessResponse.data.length > 0) {
                         const businessAccountId = businessResponse.data[0].id;
-                        // We'll need to handle this differently - save directly
                         @this.call('handleEmbeddedSignupDirect', accessToken, businessAccountId);
                     }
                 });
@@ -546,8 +524,9 @@
         function renderEmbeddedSignup() {
             if (typeof FB !== 'undefined' && FB.XFBML) {
                 const container = document.getElementById('fb-embedded-signup');
-                if (container) {
-                    // Use Facebook's Embedded Signup widget with popup mode
+                if (container && container.innerHTML.trim() === '') {
+                    // Use Facebook's Embedded Signup widget - it will open in popup automatically
+                    // The widget uses the config_id from admin panel
                     container.innerHTML = `
                         <div class="fb-embedded-signup" 
                              data-config-id="{{ $admin_fb_config_id }}"
@@ -557,13 +536,13 @@
                     `;
                     FB.XFBML.parse(container);
                     
-                    // After widget renders, hide our custom button and show Facebook's button
+                    // After widget renders, hide Facebook's default button and use our custom button
                     setTimeout(function() {
-                        const fbButton = container.querySelector('button, [role="button"]');
+                        const fbButton = container.querySelector('button, [role="button"], .fb-embedded-signup button');
                         if (fbButton) {
-                            // Style Facebook's button to match our design
+                            // Hide Facebook's default button (we'll use our custom styled button)
                             fbButton.style.display = 'none';
-                            // Make our custom button trigger Facebook's button
+                            // Make our custom button trigger Facebook's embedded signup
                             const customButton = document.getElementById('fb-login-button');
                             if (customButton) {
                                 customButton.onclick = function(e) {
@@ -572,9 +551,9 @@
                                 };
                             }
                         }
-                    }, 500);
+                    }, 1000);
                 }
-            } else {
+            } else if (typeof FB === 'undefined') {
                 // Retry if FB not loaded yet
                 setTimeout(renderEmbeddedSignup, 500);
             }
@@ -584,7 +563,8 @@
         if (typeof FB !== 'undefined') {
             renderEmbeddedSignup();
         } else {
-            setTimeout(renderEmbeddedSignup, 1000);
+            // Wait for fbAsyncInit
+            setTimeout(renderEmbeddedSignup, 1500);
         }
     });
 </script>
