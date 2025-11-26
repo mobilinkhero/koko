@@ -63,17 +63,64 @@ class FlowList extends Component
             ],
         ];
     }
+    
+    /**
+     * Livewire hook: Called when botFlow.name is updated
+     */
+    public function updatedBotFlowName($value)
+    {
+        \Log::info('🟡 BOT FLOW NAME UPDATED', [
+            'new_value' => $value,
+            'length' => strlen($value ?? ''),
+            'is_empty' => empty($value),
+            'is_null' => is_null($value),
+            'botFlow_exists' => $this->botFlow->exists,
+        ]);
+        
+        // Clear validation error for name field when user types
+        $this->resetValidation('botFlow.name');
+    }
 
     public function createBotFlow()
     {
+        \Log::info('🟢 CREATE BOT FLOW - Modal Opening', [
+            'tenant_id' => tenant_id(),
+            'botFlow_exists' => $this->botFlow->exists ?? false,
+            'botFlow_name_before_reset' => $this->botFlow->name ?? 'null',
+        ]);
+        
         $this->resetForm();
         $this->resetValidation();
+        
+        \Log::info('🟢 CREATE BOT FLOW - After Reset', [
+            'botFlow_name' => $this->botFlow->name ?? 'null',
+            'botFlow_exists' => $this->botFlow->exists,
+        ]);
+        
         $this->showFlowModal = true;
     }
 
     public function save()
     {
-        $this->validate();
+        \Log::info('🔵 SAVE BOT FLOW - Validation Starting', [
+            'tenant_id' => tenant_id(),
+            'botFlow_name' => $this->botFlow->name ?? 'null',
+            'botFlow_description' => $this->botFlow->description ?? 'null',
+            'botFlow_exists' => $this->botFlow->exists,
+            'botFlow_id' => $this->botFlow->id ?? 'null',
+        ]);
+        
+        try {
+            $this->validate();
+            \Log::info('🟢 SAVE BOT FLOW - Validation Passed');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('🔴 SAVE BOT FLOW - Validation Failed', [
+                'errors' => $e->errors(),
+                'botFlow_name_value' => $this->botFlow->name ?? 'null',
+                'botFlow_object' => $this->botFlow->toArray(),
+            ]);
+            throw $e;
+        }
 
         $isNew = ! $this->botFlow->exists;
 
