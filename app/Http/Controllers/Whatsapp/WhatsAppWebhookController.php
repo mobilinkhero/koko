@@ -2217,13 +2217,60 @@ class WhatsAppWebhookController extends Controller
         }
 
         if (empty($targetNodeIds)) {
-            whatsapp_log('No target nodes found for interaction', 'warning', [
+            whatsapp_log('No target nodes found for interaction - replaying source message', 'info', [
                 'source_node_id' => $sourceNodeId,
                 'interaction_type' => $interactionType,
                 'navigation_info' => $navigationInfo,
             ]);
 
-            return false;
+            // Find the source node and replay it
+            $sourceNode = null;
+            foreach ($flowData['nodes'] as $node) {
+                if ($node['id'] === $sourceNodeId) {
+                    $sourceNode = $node;
+                    break;
+                }
+            }
+
+            if ($sourceNode) {
+                whatsapp_log('Replaying source node', 'info', [
+                    'source_node_id' => $sourceNodeId,
+                    'node_type' => $sourceNode['type'],
+                ]);
+
+                // Build context for replaying the node
+                $context = [
+                    'flow_id' => $flow->id,
+                    'chat_id' => $chatId,
+                    'trigger_message' => $triggerMsg,
+                    'is_button_response' => true,
+                    'current_node' => $sourceNode['id'],
+                ];
+
+                // Build target mappings for the source node
+                if ($sourceNode['type'] === 'buttonMessage') {
+                    $context['next_nodes'] = $this->buildButtonTargetMappings($sourceNode['id'], $flowData);
+                } elseif ($sourceNode['type'] === 'listMessage') {
+                    $context['next_nodes'] = $this->buildListTargetMappings($sourceNode['id'], $flowData);
+                }
+
+                // Replay the source node
+                return $this->processSingleNode(
+                    $sourceNode,
+                    $contactData,
+                    $triggerMsg,
+                    $chatId,
+                    $contactNumber,
+                    $phoneNumberId,
+                    $context
+                );
+            } else {
+                whatsapp_log('Source node not found in flow data', 'error', [
+                    'source_node_id' => $sourceNodeId,
+                ]);
+
+                return false;
+            }
         }
 
         whatsapp_log('Found target nodes for interaction', 'info', [
