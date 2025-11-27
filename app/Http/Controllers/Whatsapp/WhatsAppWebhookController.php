@@ -1885,7 +1885,7 @@ class WhatsAppWebhookController extends Controller
                 ]);
 
                 // Continue execution in the found flow
-                return $this->continueFlowExecution(
+                $result = $this->continueFlowExecution(
                     $targetFlow,
                     $buttonId,
                     [], // Empty context - we don't need it
@@ -1895,14 +1895,25 @@ class WhatsAppWebhookController extends Controller
                     $contactNumber,
                     $phoneNumberId
                 );
+                
+                // If result is 'no_connection', treat button text as a trigger for other flows
+                if ($result !== 'no_connection') {
+                    return $result;
+                }
+                
+                whatsapp_log('Button not connected, treating as text trigger', 'info', [
+                    'button_id' => $buttonId,
+                    'trigger_msg' => $triggerMsg,
+                ]);
+                // Fall through to check trigger message against other flows
             } else {
                 whatsapp_log('No flow found containing button', 'warning', [
                     'button_id' => $buttonId,
                 ]);
             }
         }
-        // Handle new flow triggers (text messages)
-        if ($triggerMsg && !$buttonId) {
+        // Handle new flow triggers (text messages or unconnected button clicks)
+        if ($triggerMsg) {
             whatsapp_log('Looking for new flow to trigger', 'info', [
                 'trigger_msg' => $triggerMsg,
             ]);
@@ -2217,60 +2228,16 @@ class WhatsAppWebhookController extends Controller
         }
 
         if (empty($targetNodeIds)) {
-            whatsapp_log('No target nodes found for interaction - replaying source message', 'info', [
+            whatsapp_log('No target nodes found for interaction - button not connected', 'info', [
                 'source_node_id' => $sourceNodeId,
                 'interaction_type' => $interactionType,
                 'navigation_info' => $navigationInfo,
+                'trigger_msg' => $triggerMsg,
             ]);
 
-            // Find the source node and replay it
-            $sourceNode = null;
-            foreach ($flowData['nodes'] as $node) {
-                if ($node['id'] === $sourceNodeId) {
-                    $sourceNode = $node;
-                    break;
-                }
-            }
-
-            if ($sourceNode) {
-                whatsapp_log('Replaying source node', 'info', [
-                    'source_node_id' => $sourceNodeId,
-                    'node_type' => $sourceNode['type'],
-                ]);
-
-                // Build context for replaying the node
-                $context = [
-                    'flow_id' => $flow->id,
-                    'chat_id' => $chatId,
-                    'trigger_message' => $triggerMsg,
-                    'is_button_response' => true,
-                    'current_node' => $sourceNode['id'],
-                ];
-
-                // Build target mappings for the source node
-                if ($sourceNode['type'] === 'buttonMessage') {
-                    $context['next_nodes'] = $this->buildButtonTargetMappings($sourceNode['id'], $flowData);
-                } elseif ($sourceNode['type'] === 'listMessage') {
-                    $context['next_nodes'] = $this->buildListTargetMappings($sourceNode['id'], $flowData);
-                }
-
-                // Replay the source node
-                return $this->processSingleNode(
-                    $sourceNode,
-                    $contactData,
-                    $triggerMsg,
-                    $chatId,
-                    $contactNumber,
-                    $phoneNumberId,
-                    $context
-                );
-            } else {
-                whatsapp_log('Source node not found in flow data', 'error', [
-                    'source_node_id' => $sourceNodeId,
-                ]);
-
-                return false;
-            }
+            // Return special value to indicate button has no connection
+            // This allows the caller to treat the button text as a regular message trigger
+            return 'no_connection';
         }
 
         whatsapp_log('Found target nodes for interaction', 'info', [
