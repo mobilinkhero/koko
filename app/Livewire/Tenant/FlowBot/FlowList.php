@@ -5,6 +5,7 @@ namespace App\Livewire\Tenant\FlowBot;
 use App\Models\Tenant\BotFlow;
 use App\Rules\PurifiedInput;
 use App\Services\FeatureService;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -13,6 +14,10 @@ class FlowList extends Component
     use WithPagination;
 
     public BotFlow $botFlow;
+
+    public $name = '';
+
+    public $description = '';
 
     public $showFlowModal = false;
 
@@ -49,15 +54,22 @@ class FlowList extends Component
 
     protected function rules()
     {
+        $tenantId = tenant_id();
+        $botFlowId = $this->botFlow->id ?? null; // Use null for new records
+
         return [
-            'botFlow.name' => [
+            'name' => [
                 'required',
-                'unique:sources,name,'.($this->botFlow->id ?? 'NULL'),
+                'string',
+                Rule::unique('bot_flows', 'name')
+                    ->where('tenant_id', $tenantId)
+                    ->ignore($botFlowId),
                 new PurifiedInput(t('sql_injection_error')),
                 'max:150',
             ],
-            'botFlow.description' => [
+            'description' => [
                 'nullable',
+                'string',
                 new PurifiedInput(t('sql_injection_error')),
                 'max:150',
             ],
@@ -73,6 +85,10 @@ class FlowList extends Component
     public function save()
     {
         $this->validate();
+
+        // Assign properties to botFlow model
+        $this->botFlow->name = $this->name;
+        $this->botFlow->description = $this->description;
 
         $isNew = ! $this->botFlow->exists;
 
@@ -158,6 +174,8 @@ class FlowList extends Component
     {
         $source = BotFlow::findOrFail($flowId);
         $this->botFlow = $source;
+        $this->name = $source->name;
+        $this->description = $source->description;
         $this->resetValidation();
         $this->showFlowModal = true;
     }
@@ -167,6 +185,8 @@ class FlowList extends Component
         $this->reset();
         $this->resetValidation();
         $this->botFlow = new BotFlow;
+        $this->name = '';
+        $this->description = '';
     }
 
     public function getRemainingLimitProperty()
