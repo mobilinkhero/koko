@@ -590,17 +590,16 @@
             };
 
             // Prepare setup extras for WhatsApp Business Platform onboarding
-            // Using empty setup object enables the FULL WhatsApp Business Platform flow:
-            // 1. Business portfolio selection
-            // 2. WhatsApp Business Account selection/creation
-            // 3. WhatsApp Business App selection/creation (THIS IS THE KEY)
-            // 4. Phone number selection/creation
+            // The featureType parameter explicitly enables Business App selection/creation
+            // Reference: https://developers.facebook.com/docs/whatsapp/embedded-signup/custom-flows/onboarding-business-app-users/
             var setupExtras = {
-                setup: {},  // Empty setup object enables complete onboarding flow
+                setup: {
+                    featureType: 'whatsapp_business_app_onboarding'  // Enable Business App onboarding flow
+                },
                 sessionInfoVersion: '3'
             };
             
-            console.log('WhatsApp Business Platform Onboarding ENABLED - Full app creation flow active');
+            console.log('WhatsApp Business App Onboarding ENABLED - Business app selection/creation active');
 
             // Launch Facebook Login with Embedded Signup
             FB.login(function(response) {
