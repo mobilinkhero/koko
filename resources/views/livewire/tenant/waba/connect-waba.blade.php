@@ -590,16 +590,15 @@
             };
 
             // Prepare setup extras for WhatsApp Business Platform onboarding
-            // The featureType parameter explicitly enables Business App selection/creation
+            // IMPORTANT: featureType must be at same level as setup, not inside it!
             // Reference: https://developers.facebook.com/docs/whatsapp/embedded-signup/custom-flows/onboarding-business-app-users/
             var setupExtras = {
-                setup: {
-                    featureType: 'whatsapp_business_app_onboarding'  // Enable Business App onboarding flow
-                },
+                setup: {},  // Empty setup object
+                featureType: 'whatsapp_business_app_onboarding',  // Enable Business App onboarding (at same level as setup)
                 sessionInfoVersion: '3'
             };
             
-            console.log('WhatsApp Business App Onboarding ENABLED - Business app selection/creation active');
+            console.log('WhatsApp Business App Onboarding ENABLED - featureType configured correctly');
 
             // Launch Facebook Login with Embedded Signup
             FB.login(function(response) {
