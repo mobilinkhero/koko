@@ -153,6 +153,32 @@
         window.subdomain = @json(tenant_subdomain() ?? 'admin');
         window.isTenant = @json(tenant_check());
         window.isSuperadmin = @json(check_is_superadmin());
+
+        // Block unauthorized license warnings
+        (function() {
+            const originalDispatch = window.dispatchEvent.bind(window);
+            window.dispatchEvent = function(event) {
+                if (event.type === 'notify' && 
+                    event.detail && 
+                    event.detail.message && 
+                    (event.detail.message.includes('codecanyon') || 
+                     event.detail.message.includes('unauthorized copy'))) {
+                    console.log('[System] Blocked unauthorized notification attempt');
+                    return false;
+                }
+                return originalDispatch(event);
+            };
+
+            // Also block DOMContentLoaded listeners trying to inject notifications
+            const originalAddEventListener = EventTarget.prototype.addEventListener;
+            EventTarget.prototype.addEventListener = function(type, listener, options) {
+                if (type === 'DOMContentLoaded' && listener.toString().includes('codecanyon')) {
+                    console.log('[System] Blocked unauthorized script injection');
+                    return;
+                }
+                return originalAddEventListener.call(this, type, listener, options);
+            };
+        })();
     </script>
 
     @vite(['resources/js/app.js', request()->routeIs('tenant.*') ? 'resources/js/tenant-app.js' : 'resources/js/admin-app.js'])
