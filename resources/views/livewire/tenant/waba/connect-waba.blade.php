@@ -65,13 +65,40 @@
                                 <h4 class="text-lg font-semibold text-primary-900 dark:text-primary-100 mb-2">
                                     {{ t('embedded_signup') ?? 'Embedded Signup' }}
                                 </h4>
-                                <p class="text-sm text-primary-700 dark:text-primary-300 mb-6 max-w-2xl mx-auto">
+                                <p class="text-sm text-primary-700 dark:text-primary-300 mb-4 max-w-2xl mx-auto">
                                     {{ t('emb_signup_info') ?? 'Seamlessly authenticate users with their Facebook account using our embedded sign-in feature. No redirects, just smooth onboarding' }}
                                 </p>
+                                
+                                {{-- WhatsApp Business App Onboarding Toggle --}}
+                                <div class="flex items-center justify-center mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg border border-primary-200 dark:border-primary-700" x-data="{ enableOnboarding: true }">
+                                    <label class="flex items-center cursor-pointer space-x-3">
+                                        <div class="relative">
+                                            <input type="checkbox" 
+                                                   x-model="enableOnboarding" 
+                                                   id="enable-business-onboarding"
+                                                   class="sr-only peer">
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                                        </div>
+                                        <div class="text-left">
+                                            <div class="flex items-center space-x-2">
+                                                <svg class="w-5 h-5 text-primary-600" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                                    <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                                                </svg>
+                                                <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                                    {{ t('whatsapp_business_app_onboarding') ?? 'WhatsApp Business App Onboarding' }}
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                {{ t('enable_business_app_creation') ?? 'Enable business portfolio selection and app creation during signup' }}
+                                            </p>
+                                        </div>
+                                    </label>
+                                </div>
                                 
                                 {{-- Facebook Login Button with Loading State --}}
                                 <div x-data="{ 
                                     embeddedLoading: false,
+                                    enableOnboarding: true,
                                     init() {
                                         window.addEventListener('reset-embedded-loading', () => {
                                             this.embeddedLoading = false;
@@ -79,7 +106,7 @@
                                     }
                                 }" class="flex flex-col items-center">
                                     <button type="button" 
-                                        @click="embeddedLoading = true; launchWhatsAppSignup()" 
+                                        @click="embeddedLoading = true; launchWhatsAppSignup(document.getElementById('enable-business-onboarding').checked)" 
                                         :disabled="embeddedLoading"
                                         id="fb-connect-btn"
                                         class="inline-flex items-center justify-center px-8 py-4 text-lg font-bold text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-blue-300"
@@ -534,8 +561,11 @@
         };
 
         // Launch WhatsApp Embedded Signup
-        window.launchWhatsAppSignup = function() {
-            console.log('Launching WhatsApp Embedded Signup...');
+        window.launchWhatsAppSignup = function(enableBusinessOnboarding) {
+            enableBusinessOnboarding = enableBusinessOnboarding !== false; // Default to true
+            console.log('Launching WhatsApp Embedded Signup...', {
+                businessAppOnboarding: enableBusinessOnboarding
+            });
             
             var tempAccessCode = '',
                 phoneNumberId = '',
@@ -585,6 +615,27 @@
                 }
             };
 
+            // Prepare setup extras with business app onboarding if enabled
+            var setupExtras = {
+                sessionInfoVersion: '3'
+            };
+            
+            // Add business app onboarding feature if enabled
+            if (enableBusinessOnboarding) {
+                setupExtras.setup = {
+                    // Enable WhatsApp Business App onboarding flow
+                    // This allows users to:
+                    // 1. Select business portfolio
+                    // 2. Create or connect WhatsApp Business account
+                    // 3. Create or connect WhatsApp Business app
+                    feature: 'whatsapp_embedded_signup'
+                };
+                console.log('Business App Onboarding ENABLED - Users can create/connect business apps');
+            } else {
+                setupExtras.setup = {};
+                console.log('Business App Onboarding DISABLED - Standard signup flow');
+            }
+
             // Launch Facebook Login with Embedded Signup
             FB.login(function(response) {
                 if (response.authResponse) {
@@ -620,10 +671,7 @@
                 config_id: '{{ $admin_fb_config_id }}',
                 response_type: 'code',
                 override_default_response_type: true,
-                extras: {
-                    setup: {},
-                    sessionInfoVersion: '3'
-                }
+                extras: setupExtras
             });
 
             // Listen for session info from Facebook
