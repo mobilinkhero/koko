@@ -312,9 +312,10 @@ const isValid = computed(() => {
             (section) => section.titleValid && section.allItemsValid
         );
 
-    const connectionsValid = unconnectedItems.value.length === 0;
+    // Connections are optional now
+    // const connectionsValid = unconnectedItems.value.length === 0;
 
-    return formValid && connectionsValid;
+    return formValid;
 });
 
 const canAddMoreItems = computed(() => {
@@ -564,10 +565,6 @@ watch(isValid, (newValue) => {
                                         "
                                     >
                                         All item titles are required
-                                    </li>
-                                    <li v-if="unconnectedItems.length > 0">
-                                        All list items must be connected to
-                                        another node
                                     </li>
                                 </ul>
                             </div>
@@ -940,11 +937,7 @@ watch(isValid, (newValue) => {
                                     :class="{
                                         'border-danger-300 bg-danger-50 dark:border-danger-800 dark:bg-danger-900/30':
                                             !sectionValidations[sectionIndex]
-                                                .items[itemIndex].titleValid ||
-                                            isItemUnconnected(
-                                                sectionIndex,
-                                                itemIndex
-                                            ),
+                                                .items[itemIndex].titleValid,
                                     }"
                                 >
                                     <div
@@ -1125,9 +1118,9 @@ watch(isValid, (newValue) => {
                                                             itemIndex
                                                         )
                                                     "
-                                                    class="ml-2 text-danger-500"
+                                                    class="ml-2 text-warning-500"
                                                 >
-                                                    Not connected
+                                                    (Not connected)
                                                 </div>
                                             </div>
                                         </div>
@@ -1256,10 +1249,6 @@ watch(isValid, (newValue) => {
                                 <li>
                                     Maximum {{ MAX_ITEMS_PER_SECTION }} items
                                     per section
-                                </li>
-                                <li>
-                                    Each list item must be connected to another
-                                    node
                                 </li>
                             </ul>
                         </div>
