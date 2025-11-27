@@ -1772,9 +1772,11 @@ class WhatsAppWebhookController extends Controller
             return $message['text']['body'];
         } elseif (!empty($message['interactive'])) {
             if ($message['interactive']['type'] == 'button_reply') {
-                return $message['interactive']['button_reply']['id'];
+                // Return button title instead of ID so AI/flows can understand it
+                return $message['interactive']['button_reply']['title'] ?? $message['interactive']['button_reply']['id'];
             } elseif ($message['interactive']['type'] == 'list_reply') {
-                return $message['interactive']['list_reply']['id'];
+                // Return list item title instead of ID so AI/flows can understand it
+                return $message['interactive']['list_reply']['title'] ?? $message['interactive']['list_reply']['id'];
             }
         }
 
