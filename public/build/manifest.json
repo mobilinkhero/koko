@@ -53,7 +53,7 @@
     "isEntry": true
   },
   "resources/css/app.css": {
-    "file": "assets/app-BWlD1A-x.css",
+    "file": "assets/app-BGsnuJc-.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -73,7 +73,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CFwiI7mj.js",
+    "file": "assets/app-CVrR1HWJ.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -85,7 +85,7 @@
       "node_modules/intl-tel-input/build/js/utils.js"
     ],
     "css": [
-      "assets/app-BPI7Njeq.css"
+      "assets/app-1xAVU1bc.css"
     ]
   },
   "resources/js/tenant-app.js": {
