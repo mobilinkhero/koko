@@ -811,4 +811,133 @@
     </div>
     @endif
     @endif
+
+    <!-- Beautiful Notification Modal -->
+    @if($showNotificationModal)
+    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity z-50 flex items-center justify-center" wire:click="closeNotification">
+        <div class="relative transform transition-all" wire:click.stop>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-bounce-in">
+                <!-- Success/Error Icon Circle with Animation -->
+                <div class="relative pt-8 pb-4">
+                    @if($notificationType === 'success')
+                    <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 dark:bg-green-900/30 animate-scale-in">
+                        <svg class="h-12 w-12 text-green-600 dark:text-green-400 animate-check" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    @elseif($notificationType === 'error')
+                    <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/30 animate-scale-in">
+                        <svg class="h-12 w-12 text-red-600 dark:text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </div>
+                    @else
+                    <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-blue-100 dark:bg-blue-900/30 animate-scale-in">
+                        <svg class="h-12 w-12 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Title and Message -->
+                <div class="text-center px-6 pb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3 animate-fade-in-up">
+                        {{ $notificationTitle }}
+                    </h3>
+                    <p class="text-gray-600 dark:text-gray-300 text-base leading-relaxed animate-fade-in-up animation-delay-100">
+                        {{ $notificationMessage }}
+                    </p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex justify-center gap-3">
+                    <button 
+                        wire:click="closeNotification" 
+                        class="px-8 py-3 bg-gradient-to-r {{ $notificationType === 'success' ? 'from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : ($notificationType === 'error' ? 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' : 'from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800') }} text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                    >
+                        Got it!
+                    </button>
+                </div>
+
+                <!-- Decorative Element -->
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r {{ $notificationType === 'success' ? 'from-green-400 to-green-600' : ($notificationType === 'error' ? 'from-red-400 to-red-600' : 'from-blue-400 to-blue-600') }}"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Animation Styles -->
+    <style>
+        @keyframes bounce-in {
+            0% {
+                opacity: 0;
+                transform: scale(0.3) translateY(-50px);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            70% {
+                transform: scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes scale-in {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes check-animation {
+            0% {
+                stroke-dasharray: 0 100;
+            }
+            100% {
+                stroke-dasharray: 100 100;
+            }
+        }
+
+        @keyframes fade-in-up {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-bounce-in {
+            animation: bounce-in 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .animate-scale-in {
+            animation: scale-in 0.5s ease-out;
+        }
+
+        .animate-check {
+            animation: scale-in 0.5s ease-out, check-animation 0.5s ease-out 0.3s;
+        }
+
+        .animate-fade-in-up {
+            animation: fade-in-up 0.5s ease-out;
+        }
+
+        .animation-delay-100 {
+            animation-delay: 0.1s;
+        }
+    </style>
+    @endif
 </div>

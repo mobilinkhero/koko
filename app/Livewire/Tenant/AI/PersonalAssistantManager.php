@@ -28,6 +28,12 @@ class PersonalAssistantManager extends Component
     public $currentMessage = '';
     public $showDetailsModal = false;
     public $detailsAssistantId = null;
+    
+    // Notification Modal
+    public $showNotificationModal = false;
+    public $notificationType = 'success'; // 'success', 'error', 'info'
+    public $notificationTitle = '';
+    public $notificationMessage = '';
 
     // Form fields
     public $name = '';
@@ -195,9 +201,16 @@ class PersonalAssistantManager extends Component
             $this->showCreateForm = false;
             $this->files = [];
 
-            session()->flash('success', $this->assistant->wasRecentlyCreated ? 'Personal assistant created successfully!' : 'Personal assistant updated successfully!');
+            // Show beautiful notification instead of flash message
+            $title = $this->assistant->wasRecentlyCreated ? '🎉 Assistant Created!' : '✅ Assistant Updated!';
+            $message = $this->assistant->wasRecentlyCreated 
+                ? 'Your AI assistant has been successfully created and is ready to help you!'
+                : 'Your AI assistant has been successfully updated with the latest settings.';
+            
+            $this->showNotification('success', $title, $message);
 
             $this->dispatch('assistant-saved');
+
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -359,12 +372,13 @@ class PersonalAssistantManager extends Component
             // Delete assistant
             $assistant->delete();
 
-            session()->flash('success', 'Assistant deleted successfully!');
-            $this->loadAssistant();
+            // Show beautiful notification instead of flash message
+            $this->showNotification('success', '🗑️ Assistant Deleted!', 'Your AI assistant has been successfully deleted.');
 
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to delete assistant: ' . $e->getMessage());
         }
+
     }
 
     public function syncAssistant($assistantId)
@@ -483,6 +497,21 @@ class PersonalAssistantManager extends Component
         $this->showDetailsModal = false;
         $this->detailsAssistantId = null;
     }
+
+    public function showNotification($type, $title, $message)
+    {
+        $this->notificationType = $type;
+        $this->notificationTitle = $title;
+        $this->notificationMessage = $message;
+        $this->showNotificationModal = true;
+    }
+
+    public function closeNotification()
+    {
+        $this->showNotificationModal = false;
+        $this->loadAssistant(); // Refresh the list
+    }
+
 
     public function getAssistantDetails($assistantId)
     {
