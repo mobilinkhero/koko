@@ -812,6 +812,53 @@
     @endif
     @endif
 
+    <!-- Beautiful Confirmation Modal -->
+    @if($showConfirmModal)
+    <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity z-50 flex items-center justify-center" wire:click="closeConfirmation">
+        <div class="relative transform transition-all" wire:click.stop>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-bounce-in">
+                <!-- Warning Icon Circle with Animation -->
+                <div class="relative pt-8 pb-4">
+                    <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-100 dark:bg-red-900/30 animate-scale-in">
+                        <svg class="h-12 w-12 text-red-600 dark:text-red-400 animate-shake" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Title and Message -->
+                <div class="text-center px-6 pb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3 animate-fade-in-up">
+                        {{ $confirmTitle }}
+                    </h3>
+                    <p class="text-gray-600 dark:text-gray-300 text-base leading-relaxed animate-fade-in-up animation-delay-100">
+                        {{ $confirmMessage }}
+                    </p>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex justify-center gap-3">
+                    <button 
+                        wire:click="closeConfirmation" 
+                        class="px-6 py-3 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl font-semibold shadow hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        wire:click="confirmDelete" 
+                        class="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                    >
+                        Delete
+                    </button>
+                </div>
+
+                <!-- Decorative Element -->
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-400 to-red-600"></div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Beautiful Notification Modal -->
     @if($showNotificationModal)
     <div class="fixed inset-0 bg-black bg-opacity-50 transition-opacity z-50 flex items-center justify-center" wire:click="closeNotification">
@@ -933,6 +980,16 @@
 
         .animate-fade-in-up {
             animation: fade-in-up 0.5s ease-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+
+        .animate-shake {
+            animation: shake 0.5s ease-in-out 0.5s;
         }
 
         .animation-delay-100 {

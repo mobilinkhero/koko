@@ -544,8 +544,11 @@ class PersonalAssistantManager extends Component
     public function closeNotification()
     {
         $this->showNotificationModal = false;
-        $this->loadAssistant(); // Refresh the list
+        
+        // Trigger page refresh via redirect to current route
+        return redirect()->to(request()->url());
     }
+
 
     public function showConfirmation($action, $assistantId, $title, $message)
     {
