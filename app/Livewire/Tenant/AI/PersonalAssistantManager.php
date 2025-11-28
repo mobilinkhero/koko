@@ -456,13 +456,13 @@ class PersonalAssistantManager extends Component
             }
 
             $filesCount = $result['files_uploaded'] ?? 0;
-            $message = 'Assistant synced successfully with OpenAI!';
+            $message = 'Your AI assistant has been successfully synced with OpenAI!';
             if ($filesCount > 0) {
                 $message .= " {$filesCount} file(s) uploaded to vector store.";
             }
 
-            session()->flash('success', $message);
-            $this->loadAssistant();
+            // Show beautiful notification instead of flash message
+            $this->showNotification('success', '🔄 Assistant Synced!', $message);
 
         } catch (\Exception $e) {
             Log::error('Sync Assistant Error', [
@@ -473,6 +473,7 @@ class PersonalAssistantManager extends Component
 
             session()->flash('error', 'Failed to sync assistant: ' . $e->getMessage());
         }
+
     }
 
     public function openChat($assistantId)
