@@ -901,7 +901,7 @@
                 <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex justify-center gap-3">
                     <button 
                         wire:click="closeNotification" 
-                        class="px-8 py-3 bg-gradient-to-r {{ $notificationType === 'success' ? 'from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:ring-green-500' : ($notificationType === 'error' ? 'from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 focus:ring-red-500' : 'from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:ring-blue-500') }} text-white rounded-xl font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2"
+                        class="px-8 py-3 {{ $notificationType === 'success' ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500' : ($notificationType === 'error' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500') }} text-white rounded-xl font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2"
                     >
                         Got it!
                     </button>
