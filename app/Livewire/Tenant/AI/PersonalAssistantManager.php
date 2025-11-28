@@ -34,6 +34,13 @@ class PersonalAssistantManager extends Component
     public $notificationType = 'success'; // 'success', 'error', 'info'
     public $notificationTitle = '';
     public $notificationMessage = '';
+    
+    // Confirmation Modal
+    public $showConfirmModal = false;
+    public $confirmAction = '';
+    public $confirmAssistantId = null;
+    public $confirmTitle = '';
+    public $confirmMessage = '';
 
     // Form fields
     public $name = '';
@@ -364,6 +371,33 @@ class PersonalAssistantManager extends Component
             return;
         }
 
+        // Show confirmation modal instead of browser confirm
+        $this->showConfirmation(
+            'delete',
+            $assistantId,
+            '⚠️ Delete Assistant?',
+            "Are you sure you want to delete \"{$assistant->name}\"? This action cannot be undone and all associated files will be removed."
+        );
+    }
+
+    public function executeDelete($assistantId)
+    {
+        // SECURITY: Verify assistant belongs to current tenant
+        $tenant = PersonalAssistant::getCurrentTenant();
+        if (!$tenant) {
+            session()->flash('error', 'Unable to determine current tenant');
+            return;
+        }
+
+        $assistant = PersonalAssistant::where('id', $assistantId)
+            ->where('tenant_id', $tenant->id)
+            ->first();
+
+        if (!$assistant) {
+            session()->flash('error', 'Assistant not found or access denied');
+            return;
+        }
+
         try {
             // Clear all files first
             $fileService = new PersonalAssistantFileService();
@@ -380,6 +414,7 @@ class PersonalAssistantManager extends Component
         }
 
     }
+
 
     public function syncAssistant($assistantId)
     {
@@ -511,6 +546,35 @@ class PersonalAssistantManager extends Component
         $this->showNotificationModal = false;
         $this->loadAssistant(); // Refresh the list
     }
+
+    public function showConfirmation($action, $assistantId, $title, $message)
+    {
+        $this->confirmAction = $action;
+        $this->confirmAssistantId = $assistantId;
+        $this->confirmTitle = $title;
+        $this->confirmMessage = $message;
+        $this->showConfirmModal = true;
+    }
+
+    public function closeConfirmation()
+    {
+        $this->showConfirmModal = false;
+        $this->confirmAction = '';
+        $this->confirmAssistantId = null;
+    }
+
+    public function confirmDelete()
+    {
+        $this->showConfirmModal = false;
+        
+        if ($this->confirmAssistantId) {
+            $this->executeDelete($this->confirmAssistantId);
+        }
+        
+        $this->confirmAction = '';
+        $this->confirmAssistantId = null;
+    }
+
 
 
     public function getAssistantDetails($assistantId)

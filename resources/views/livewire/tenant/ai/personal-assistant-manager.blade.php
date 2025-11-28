@@ -218,7 +218,7 @@
             <button wire:click="editSpecificAssistant({{ $assistant->id }})" class="w-10 h-10 p-0 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center shadow-sm" title="Edit Assistant">
                 <x-heroicon-s-cog-6-tooth class="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </button>
-            <button wire:click="deleteSpecificAssistant({{ $assistant->id }})" wire:confirm="Delete assistant?" class="w-10 h-10 p-0 bg-red-100 dark:bg-red-900/20 rounded-full hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors flex items-center justify-center shadow-sm" title="Delete Assistant">
+            <button wire:click="deleteSpecificAssistant({{ $assistant->id }})" class="w-10 h-10 p-0 bg-red-100 dark:bg-red-900/20 rounded-full hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors flex items-center justify-center shadow-sm" title="Delete Assistant">
                 <x-heroicon-s-trash class="w-5 h-5 text-red-600 dark:text-red-400" />
             </button>
         </div>
@@ -854,7 +854,7 @@
                 <div class="bg-gray-50 dark:bg-gray-700/50 px-6 py-4 flex justify-center gap-3">
                     <button 
                         wire:click="closeNotification" 
-                        class="px-8 py-3 bg-gradient-to-r {{ $notificationType === 'success' ? 'from-green-600 to-green-700 hover:from-green-700 hover:to-green-800' : ($notificationType === 'error' ? 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' : 'from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800') }} text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                        class="px-8 py-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 hover:from-purple-700 hover:via-indigo-700 hover:to-blue-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
                     >
                         Got it!
                     </button>
