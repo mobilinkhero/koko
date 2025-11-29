@@ -49,10 +49,10 @@
 
     <!-- AI Assistant Cards Grid -->
     @if(!$showCreateForm && $assistants && $assistants->count() > 0)
-    <div class="mt-6 w-full">
-        <div class="assistants-grid-container">
+    <div class="mt-6 w-full" style="width: 100% !important;">
+        <div class="assistants-grid-container" style="display: grid !important; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important; gap: 1.5rem !important; width: 100% !important;">
         @foreach($assistants as $assistant)
-        <div class="assistant-card bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div class="assistant-card bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm hover:shadow-md transition-shadow duration-200" style="max-width: none !important; min-width: 0 !important;">
 
         <!-- Header with Icon and Title -->
         <div class="flex items-start space-x-3 mb-4">
