@@ -997,4 +997,15 @@
         }
     </style>
     @endif
+
+    <!-- Script to handle page refresh after notification -->
+    <script>
+        document.addEventListener('livewire:initialized', () => {
+            Livewire.on('refresh-page', () => {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 100);
+            });
+        });
+    </script>
 </div>
