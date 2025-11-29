@@ -199,34 +199,44 @@
         </div>
         </div>
 
+
         <!-- Action Buttons -->
-        <div class="flex items-center space-x-3 mt-6">
-            <button wire:click="openChat({{ $assistant->id }})" class="flex-1 bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center shadow-sm h-10">
-                <x-heroicon-s-chat-bubble-left-right class="w-4 h-4 mr-2" />
-                Chat
-            </button>
-            <button wire:click="syncAssistant({{ $assistant->id }})" wire:loading.attr="disabled" class="flex-1 bg-purple-600 text-white px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm h-10 min-w-0">
-                <span wire:loading.remove wire:target="syncAssistant({{ $assistant->id }})" class="flex items-center justify-center whitespace-nowrap">
-                    Sync Now
-                </span>
-                <span wire:loading wire:target="syncAssistant({{ $assistant->id }})" class="flex items-center justify-center whitespace-nowrap">
-                    <svg class="animate-spin h-4 w-4 mr-2 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span class="truncate">Syncing...</span>
-                </span>
-            </button>
-            <button wire:click="openDetails({{ $assistant->id }})" class="flex-1 bg-gray-700 dark:bg-gray-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors flex items-center justify-center shadow-sm h-10" title="View Details">
-                <x-heroicon-s-information-circle class="w-4 h-4 mr-2" />
-                Details
-            </button>
-            <button wire:click="editSpecificAssistant({{ $assistant->id }})" class="w-10 h-10 p-0 bg-gray-100 dark:bg-gray-700 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center shadow-sm" title="Edit Assistant">
-                <x-heroicon-s-cog-6-tooth class="w-5 h-5 text-gray-600 dark:text-gray-400" />
-            </button>
-            <button wire:click="deleteSpecificAssistant({{ $assistant->id }})" class="w-10 h-10 p-0 bg-red-100 dark:bg-red-900/20 rounded-full hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors flex items-center justify-center shadow-sm" title="Delete Assistant">
-                <x-heroicon-s-trash class="w-5 h-5 text-red-600 dark:text-red-400" />
-            </button>
+        <div class="space-y-2 mt-6">
+            <!-- Primary Actions -->
+            <div class="flex items-center gap-2">
+                <button wire:click="openChat({{ $assistant->id }})" class="flex-1 bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center justify-center shadow-sm">
+                    <x-heroicon-s-chat-bubble-left-right class="w-4 h-4 mr-2" />
+                    Chat
+                </button>
+                <button wire:click="syncAssistant({{ $assistant->id }})" wire:loading.attr="disabled" class="flex-1 bg-purple-600 text-white px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    <span wire:loading.remove wire:target="syncAssistant({{ $assistant->id }})" class="flex items-center justify-center">
+                        Sync Now
+                    </span>
+                    <span wire:loading wire:target="syncAssistant({{ $assistant->id }})" class="flex items-center justify-center">
+                        <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Syncing...
+                    </span>
+                </button>
+                <button wire:click="openDetails({{ $assistant->id }})" class="flex-1 bg-gray-700 dark:bg-gray-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors flex items-center justify-center shadow-sm" title="View Details">
+                    <x-heroicon-s-information-circle class="w-4 h-4 mr-2" />
+                    Details
+                </button>
+            </div>
+            
+            <!-- Secondary Actions -->
+            <div class="flex items-center gap-2">
+                <button wire:click="editSpecificAssistant({{ $assistant->id }})" class="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center shadow-sm">
+                    <x-heroicon-s-cog-6-tooth class="w-4 h-4 mr-2" />
+                    Edit
+                </button>
+                <button wire:click="deleteSpecificAssistant({{ $assistant->id }})" class="flex-1 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors flex items-center justify-center shadow-sm">
+                    <x-heroicon-s-trash class="w-4 h-4 mr-2" />
+                    Delete
+                </button>
+            </div>
         </div>
     </div>
     @endforeach
