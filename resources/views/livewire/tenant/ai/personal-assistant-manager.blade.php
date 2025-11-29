@@ -45,10 +45,13 @@
 
 
 
-    <!-- AI Assistant Card -->
+
+
+    <!-- AI Assistant Cards Grid -->
     @if(!$showCreateForm && $assistants && $assistants->count() > 0)
+    <div class="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     @foreach($assistants as $assistant)
-    <div class="mt-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 max-w-md">
+    <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
         <!-- Header with Icon and Title -->
         <div class="flex items-start space-x-3 mb-4">
             <div class="flex-shrink-0">
@@ -224,6 +227,7 @@
         </div>
     </div>
     @endforeach
+    </div>
     @elseif(!$showCreateForm)
     <div class="text-center py-12">
         <x-heroicon-o-cpu-chip class="mx-auto h-12 w-12 text-gray-400" />
