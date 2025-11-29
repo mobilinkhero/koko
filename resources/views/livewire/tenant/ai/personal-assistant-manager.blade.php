@@ -197,6 +197,7 @@
                 </div>
                 @endif
         </div>
+        </div>
 
         <!-- Action Buttons -->
         <div class="flex items-center space-x-3 mt-6">
