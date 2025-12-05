@@ -185,8 +185,17 @@ if (! function_exists('parseMessageText')) {
         $data['reply_text'] = preg_replace('/@{(.*?)}/', '{$1}', $data['reply_text'] ?? '');
 
         $mergeFieldsService = app(MergeFieldsService::class);
+        
+        // ✅ FIX: Safely access tenant_id with null coalescing
+        $tenantId = $data['tenant_id'] ?? null;
+        
         if ($data['rel_type'] == 'lead' || $data['rel_type'] == 'customer') {
-            $data['reply_text'] = $mergeFieldsService->parseTemplates(['tenant-other-group', 'tenant-contact-group'], $data['reply_text'], ['contactId' => $data['rel_id'], 'tenantId' => $data['tenant_id']]);
+            // Only pass tenantId if it exists
+            $context = ['contactId' => $data['rel_id']];
+            if ($tenantId) {
+                $context['tenantId'] = $tenantId;
+            }
+            $data['reply_text'] = $mergeFieldsService->parseTemplates(['tenant-other-group', 'tenant-contact-group'], $data['reply_text'], $context);
         }
         $data['reply_text'] = $mergeFieldsService->parseTemplates(['tenant-other-group'], $data['reply_text'], []);
 
