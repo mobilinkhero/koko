@@ -2471,7 +2471,6 @@ trait WhatsApp
                 'reply_text' => $aiResponseText,
                 'bot_header' => '',
                 'bot_footer' => '',
-                'tenant_id' => $this->wa_tenant_id ?? tenant_id() ?? null,
             ];
 
             $this->logToAiFile($logFile, "SENDING MESSAGE TO USER:");
