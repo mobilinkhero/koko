@@ -745,6 +745,14 @@ class PersonalAssistantManager extends Component
                 throw new \Exception('OpenAI API key not configured. Please add your OpenAI API key in the settings.');
             }
 
+            // Check if any message contains images (for vision support)
+            $hasImages = $this->messagesContainImages($messages);
+
+            if ($hasImages) {
+                // Use direct OpenAI API for vision support
+                return $this->getAiResponseWithVision($messages, $model, $temperature, $maxTokens, $openaiKey);
+            }
+
             // Use LLPhant OpenAI Chat like in the trait
             $config = new \LLPhant\OpenAIConfig();
             $config->apiKey = $openaiKey;
@@ -764,6 +772,137 @@ class PersonalAssistantManager extends Component
 
             // Return a fallback message instead of throwing
             return 'I apologize, but I encountered an error processing your request. Please ensure your OpenAI API key is configured correctly in the settings.';
+        }
+    }
+
+    /**
+     * Check if messages contain images
+     */
+    private function messagesContainImages($messages)
+    {
+        foreach ($messages as $message) {
+            if (isset($message['content']) && is_array($message['content'])) {
+                foreach ($message['content'] as $item) {
+                    if (isset($item['type']) && $item['type'] === 'image_url') {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Get AI response with vision support (for images)
+     */
+    private function getAiResponseWithVision($messages, $model, $temperature, $maxTokens, $apiKey)
+    {
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Content-Type' => 'application/json',
+            ])->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $model,
+                'messages' => $messages,
+                'temperature' => $temperature,
+                'max_tokens' => $maxTokens,
+            ]);
+
+            if ($response->failed()) {
+                throw new \Exception('OpenAI API request failed: ' . $response->body());
+            }
+
+            $data = $response->json();
+            
+            return $data['choices'][0]['message']['content'] ?? 'No response generated';
+
+        } catch (\Exception $e) {
+            Log::error('Vision AI Response Error: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Process a message with image (can be called from webhooks like WhatsApp)
+     * 
+     * @param int $assistantId - The assistant ID
+     * @param string $textPrompt - The text message from user
+     * @param string|null $imageUrl - Optional image URL to analyze
+     * @return array - Response with success status and message
+     */
+    public function processMessageWithImage($assistantId, $textPrompt, $imageUrl = null)
+    {
+        try {
+            $assistant = PersonalAssistant::find($assistantId);
+            
+            if (!$assistant) {
+                return [
+                    'success' => false,
+                    'message' => 'Assistant not found'
+                ];
+            }
+
+            // Build context from uploaded documents
+            $context = $this->buildContextFromDocuments($assistant);
+
+            // Prepare messages array
+            $messages = [
+                [
+                    'role' => 'system',
+                    'content' => $assistant->system_instructions . "\n\n" .
+                        "You have access to the following documents and information:\n" .
+                        $context
+                ]
+            ];
+
+            // Add user message with or without image
+            if ($imageUrl) {
+                // Format message for vision API
+                $messages[] = [
+                    'role' => 'user',
+                    'content' => [
+                        [
+                            'type' => 'text',
+                            'text' => $textPrompt ?: 'Please analyze this image.'
+                        ],
+                        [
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => $imageUrl,
+                                'detail' => 'auto' // Can be 'low', 'high', or 'auto'
+                            ]
+                        ]
+                    ]
+                ];
+            } else {
+                // Regular text message
+                $messages[] = [
+                    'role' => 'user',
+                    'content' => $textPrompt
+                ];
+            }
+
+            // Get AI response
+            $response = $this->getAiResponse(
+                $messages,
+                $assistant->model,
+                $assistant->temperature,
+                $assistant->max_tokens
+            );
+
+            return [
+                'success' => true,
+                'message' => $response,
+                'has_image' => !is_null($imageUrl)
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Process Message With Image Error: ' . $e->getMessage());
+            
+            return [
+                'success' => false,
+                'message' => 'I apologize, but I encountered an error processing your request. ' . $e->getMessage()
+            ];
         }
     }
 
