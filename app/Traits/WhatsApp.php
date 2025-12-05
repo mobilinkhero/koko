@@ -2736,11 +2736,8 @@ trait WhatsApp
         if (empty($text)) {
             return $text;
         }
-        
-        // ✅ FIX: Access $contactData as object, not array
-        // $contactData is passed as an object (stdClass or Model) throughout the flow system
-        $data['rel_type'] = is_object($contactData) ? ($contactData->type ?? 'lead') : ($contactData['type'] ?? 'lead');
-        $data['rel_id'] = is_object($contactData) ? ($contactData->id ?? '') : ($contactData['id'] ?? '');
+        $data['rel_type'] = $contactData['type'] ?? 'lead';
+        $data['rel_id'] = $contactData['id'] ?? '';
         $data['reply_text'] = $text;
         $data['tenant_id'] = $this->wa_tenant_id;
 
