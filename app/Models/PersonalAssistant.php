@@ -122,7 +122,8 @@ class PersonalAssistant extends Model
             return null;
         }
 
-        return static::where('tenant_id', $tenantId)
+        return static::withoutGlobalScope('tenant')
+            ->where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->first();
     }
@@ -141,7 +142,8 @@ class PersonalAssistant extends Model
             return null;
         }
 
-        return static::where('id', $assistantId)
+        return static::withoutGlobalScope('tenant')
+            ->where('id', $assistantId)
             ->where('tenant_id', $tenantId)
             ->first();
     }
