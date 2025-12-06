@@ -17,26 +17,14 @@ trait BelongsToTenant
         static::addGlobalScope('tenant', function (Builder $builder) {
             // Only apply the tenant scope if we're in a tenant context and the query doesn't already join with the tenant
             if (Tenant::checkCurrent() && ! $builder->getQuery()->joins) {
-                // Get current tenant safely
-                try {
-                    $currentTenant = Tenant::current();
-                    if (!$currentTenant || !isset($currentTenant->id)) {
-                        return; // Skip scoping if tenant is not properly initialized
-                    }
-                    
-                    $currentTenantId = $currentTenant->id;
-                } catch (\Exception $e) {
-                    return; // Skip scoping if there's any error accessing tenant
-                }
-
                 // Check if we already have a where clause for tenant_id to avoid duplicating it
                 $alreadyScoped = collect($builder->getQuery()->wheres)
-                    ->contains(function ($where) use ($currentTenantId) {
-                        return isset($where['column']) && $where['column'] === 'tenant_id' && (isset($where['value']) && $where['value'] == $currentTenantId);
+                    ->contains(function ($where) {
+                        return isset($where['column']) ? $where['column'] === 'tenant_id' && (isset($where['value']) && $where['value'] == Tenant::current()->id) : null;
                     });
 
                 if (! $alreadyScoped) {
-                    $builder->where('tenant_id', $currentTenantId);
+                    $builder->where('tenant_id', Tenant::current()->id);
                 }
             }
         });

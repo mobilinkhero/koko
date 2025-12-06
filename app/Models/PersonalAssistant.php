@@ -122,27 +122,9 @@ class PersonalAssistant extends Model
             return null;
         }
 
-        // Use direct DB query to completely bypass all Eloquent scopes
-        $assistantData = \DB::table('personal_assistants')
-            ->where('tenant_id', $tenantId)
+        return static::where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->first();
-        
-        if (!$assistantData) {
-            return null;
-        }
-        
-        // Manually instantiate the model from the raw data
-        $assistant = new static();
-        $assistant->exists = true;
-        
-        foreach ((array)$assistantData as $key => $value) {
-            $assistant->setAttribute($key, $value);
-        }
-        
-        $assistant->syncOriginal();
-        
-        return $assistant;
     }
 
     /**
@@ -159,27 +141,9 @@ class PersonalAssistant extends Model
             return null;
         }
 
-        // Use direct DB query to completely bypass all Eloquent scopes and avoid tenant context issues
-        $assistantData = \DB::table('personal_assistants')
-            ->where('id', $assistantId)
+        return static::where('id', $assistantId)
             ->where('tenant_id', $tenantId)
             ->first();
-        
-        if (!$assistantData) {
-            return null;
-        }
-        
-        // Manually instantiate the model from the raw data
-        $assistant = new static();
-        $assistant->exists = true;
-        
-        foreach ((array)$assistantData as $key => $value) {
-            $assistant->setAttribute($key, $value);
-        }
-        
-        $assistant->syncOriginal();
-        
-        return $assistant;
     }
 
     /**
